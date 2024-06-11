@@ -52,18 +52,18 @@ contract ProduceManagement {
         return keccak256(b_full);
     }
 
-    function registerConsignment(string memory consz_lot_number, string memory consignment_weight, string memory creation_date) public returns (bytes32){
+    function registerConsignment(address farmer, string memory consz_lot_number, string memory consignment_weight, string memory creation_date) public returns (bytes32){
         //Create hash for data and check if it exists. If it doesn't, create the consignment and return the ID to the user
-        bytes32 unit_hash = createHashFromInfo(msg.sender, consz_lot_number, consignment_weight, creation_date);
+        bytes32 unit_hash = createHashFromInfo(farmer, consz_lot_number, consignment_weight, creation_date);
         
         require(consignments[unit_hash].farmer == address(0), "Consignment ID already used");
 
-        Consignment memory new_unit = Consignment(msg.sender, consz_lot_number, consignment_weight, creation_date);
+        Consignment memory new_unit = Consignment(farmer, consz_lot_number, consignment_weight, creation_date);
         consignments[unit_hash] = new_unit;
         return unit_hash;
     }
 
-    function registerProduce(string memory consz_lot_number, string memory produce_type, string memory creation_date, bytes32[6] memory unit_array) public returns (bytes32){
+    function registerProduce(address farmer, string memory consz_lot_number, string memory produce_type, string memory creation_date, bytes32[6] memory unit_array) public returns (bytes32){
         //Check if all the consignments exist, hash values and add to produce mapping.
         uint i;
         for(i = 0;i < unit_array.length; i++){
@@ -71,11 +71,11 @@ contract ProduceManagement {
         }
 
         //Create hash for data and check if exists. If it doesn't, create the consignment and return the ID to the user
-        bytes32 produce_hash = createHashFromInfo(msg.sender, consz_lot_number, produce_type, creation_date);
+        bytes32 produce_hash = createHashFromInfo(farmer, consz_lot_number, produce_type, creation_date);
         
         require(produces[produce_hash].farmer == address(0), "Produce ID already used");
 
-        Produce memory new_produce = Produce(msg.sender, consz_lot_number, produce_type, creation_date, unit_array);
+        Produce memory new_produce = Produce(farmer, consz_lot_number, produce_type, creation_date, unit_array);
         produces[produce_hash] = new_produce;
         return produce_hash;
     }

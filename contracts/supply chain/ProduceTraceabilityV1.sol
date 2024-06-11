@@ -3,12 +3,12 @@ pragma solidity ^0.8.24;
 import "./ProduceOwnership.sol";
 
 
-contract ProduceTraceabilityV1 {
+contract ProduceTraceabilityV1  {
     struct FarmProduce {
         bytes32 produceHash;
-        string producer;
-        string quality;
-        string storageDuration;
+        string produce;
+        address farmer;
+        uint256 quantity;
         address[] agents; // List of blockchain agents where data is recorded
     }
 
@@ -21,10 +21,10 @@ contract ProduceTraceabilityV1 {
 
     struct ProduceSale {
         bytes32 consignmentHash;
-        bytes32 produceHash;
-        bytes32 shipmentHash;
-        bytes32 customerHash;
         uint256 referenceNumber;
+        address buyer;
+        uint256 amount;
+        uint256 price;
     }
 
     mapping(address => Farmer) public farmers;
@@ -37,17 +37,17 @@ contract ProduceTraceabilityV1 {
     ProduceSale[] public ProduceSales;
     address public owner;
     ProduceOwnership public pwn;
-    ProduceManagement public pmg;
+    //ProduceManagement public pmg;
 
-    event ProduceAdded(string produce, string producer, address indexed farmer, bytes32 produce_hash);
-    event FarmerRegistered(string name, address indexed ethAddress, bytes32 farmer_hash);
-    event FarmerVerified(address indexed ethAddress, uint256 blockNumber);
-    event ProduceSold(address indexed source, bytes32 produce_hash , bytes32 customerHash, bytes32 consignment_hash);
+    event ProduceAdded(address indexed farmer, bytes32 produce_hash, string produce_name, uint256 timestamp);
+    event FarmerRegistered(string name, address indexed ethAddress, uint256 timestamp);
+    event FarmerVerified(address indexed ethAddress, uint256 timestamp);
+    event ProduceSold(address indexed source, bytes32 produce_hash , uint256 referenceNumber, uint256 timestamp);
 
-    constructor(address prod_own_addr, address prod_mgmt_addr) {
+    constructor(address prod_own_addr) { //address prod_mgmt_addr
         owner = msg.sender;
         pwn = ProduceOwnership(prod_own_addr);
-        pmg = ProduceManagement(prod_mgmt_addr);
+        //pmg = ProduceManagement(prod_mgmt_addr);
     }
 
     modifier onlyOwner() {
@@ -62,30 +62,35 @@ contract ProduceTraceabilityV1 {
 
 
     function addFarmProduce(
-        string memory _produceName,
-        string memory _producer,
-        string memory _quality,
-        string memory _storageDuration,
+        string memory _produce_name,
+        string memory _lot_number,
+        string memory _weight,
+        uint256 _quantity,
+        string memory _storage_date,
         address _farmer,
         address[] memory _agents
-    ) public onlyOwner onlyFarmer(_farmer) returns(bytes32) {
-        bytes32 _produceHash = pwn.pm.createHashFromInfo(_farmer, _producer, _produceName, _quality);
+    ) public  onlyOwner onlyFarmer(_farmer) returns(bytes32) {
+        bytes32 _produceHash = pwn.pm.registerConsignment(_farmer, _lot_number, _weight, _storage_date);
+        //pwn.pm.registerProduce()
         FarmProduce memory newProduct = FarmProduce({
             produceHash: _produceHash,
-            producer: _producer,
-            quality: _quality,
-            storageDuration: _storageDuration,
+            produce: _produce_name,
+            farmer: _farmer,
+            quantity: _quantity,
             agents: _agents
         });
 
         FarmProduces.push(newProduct);
-        uint256 index = FarmProduces.length;
+        pwn.addOwnership(1, _produceHash);
+        uint256 index = getProduceCount();
         lookUpProd[_produceHash] = index - 1;
         isProduce[_farmer] = _produceHash;
-        emit ProduceAdded(_produceName, _producer, _farmer, block.number);
+        emit ProduceAdded(_farmer, _produceHash, _produce_name, block.timestamp);
+        return _produceHash;
     }
     
     function registerFarmer(string memory _name, string memory _location,  address _ethAddress) public {
+        require(_ethAddress != address(0), "Farmer address invalid");
         Farmer memory newFarmer = Farmer({
             name: _name,
             location : _location,
@@ -96,39 +101,43 @@ contract ProduceTraceabilityV1 {
         farmers[_ethAddress] = newFarmer;
         FarmerAddresses.push(_ethAddress);
 
-        emit FarmerRegistered(_name, _ethAddress, block.number);
+        emit FarmerRegistered(_name, _ethAddress, block.timestamp);
     }
 
     function verifyFarmer(address _ethAddress) public onlyOwner {
         require(farmers[_ethAddress].ethAddress != address(0), "Farmer not registered");
         farmers[_ethAddress].isVerified = true;
 
-        emit FarmerVerified(_ethAddress, block.number);
+        emit FarmerVerified(_ethAddress, block.timestamp);
     }
 
     function sellFarmProduce(
-        uint256 _index,
-        string memory _source,
-        string memory _name,
-        uint256 _quantity,
-        uint256 _price,
-        address _farmer
-    ) public onlyOwner onlyFarmer(_farmer){
-        bytes32 bytesProduceName = keccak256(abi.encodePacked(_name));
-        require(isProduce[_farmer] == bytesProduceName, "Only farmer's products may be sold");
+        bytes32 _produceHash,
+        uint256 _referenceNumber,
+        address _farmer,
+        address _buyer,
+        uint256 _amount,
+        uint256 _price   
+    ) public  onlyFarmer(_farmer) {
+        require(_buyer != address(0), "Buyer address invalid");
+        require(isProduce[_farmer] == _produceHash, "Only farmer's products may be sold");
+        uint256 index = getProduceIndex(_produceHash);
+        uint256 _quantity = FarmProduces[index].quantity;
+        require(_amount <= _quantity, "Insufficient produce to sell");
         ProduceSale memory newSale = ProduceSale({
-            index: _index,
-            source: _farmer,
-            name: _name,
-            farmer: _source,
-            price: _price,
-            quantity: _quantity
+            consignmentHash: _produceHash,
+            _referenceNumber: _referenceNumber,
+            buyer: _buyer,
+            amount: _amount,
+            price: _price
         });
         
         ProduceSales.push(newSale);
-        uint256 counter = ProduceSales.length;
-        lookUpSale[_index] = counter - 1;
-        emit ProduceSold(_farmer, _name, _price, block.number);
+        pwn.changeOwnership(1, _produceHash, _buyer);
+        FarmProduces[index].quantity -= _amount;
+        uint256 counter = getProduceSaleCount();
+        lookUpSale[_referenceNumber] = counter - 1;
+        emit ProduceSold(_farmer, _produceHash, _referenceNumber, block.timestamp);
     }
 
     function getFarmerCount() public view returns (uint256) {
@@ -143,26 +152,26 @@ contract ProduceTraceabilityV1 {
         return FarmProduces.length;
     }
 
-    function getProduce(uint256 index) public view returns (string memory, string memory, string memory, string memory, address, address[] memory) {
+    function getProduce(uint256 index) public view returns (bytes32 memory, string memory, address, uint256, address[] memory) {
         require(index < FarmProduces.length, "Invalid index");
     
         FarmProduce storage Produce = FarmProduces[index];
-        return (Produce.produceName, Produce.producer, Produce.quality, Produce.storageDuration,  Produce.farmer, Produce.agents);
+        return (Produce.produceHash, Produce.produce, Produce.farmer, Produce.quantity, Produce.agents);
     }
 
-    function getProduceIndex(string memory _produceName) public view returns (uint256) {  
-        return lookUpProd[keccak256(abi.encodePacked(_produceName))];
+    function getProduceIndex(bytes32 _produceHash) public view returns (uint256) {  
+        return lookUpProd[_produceHash];
     }
 
-    function getProduceSaleIndex(uint256 index) public view returns (uint256) {  
-        return lookUpSale[index];
+    function getProduceSaleIndex(uint256 _referenceNumber) public view returns (uint256) {  
+        return lookUpSale[_referenceNumber];
     }
     
-    function getProduceSale(uint256 index) public view returns (uint256, address, string memory, string memory, uint256, uint256) {
+    function getProduceSale(uint256 index) public view returns (bytes32, uint256, address, uint256, uint256) {
         require(index < ProduceSales.length, "Invalid index");
     
         ProduceSale storage Sale = ProduceSales[index];
-        return (Sale.index, Sale.source, Sale.name, Sale.farmer, Sale.price, Sale.quantity);
+        return (Sale.consignmentHash, Sale.referenceNumber, Sale.buyer, Sale.amount, Sale.price);
     }
 
     function getProduceSaleCount() public view returns (uint256) {
