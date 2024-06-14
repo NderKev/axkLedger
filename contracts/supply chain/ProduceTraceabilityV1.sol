@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 import "./ProduceOwnership.sol";
-
+import "./ProduceManagement.sol";
 
 contract ProduceTraceabilityV1  {
     struct FarmProduce {
@@ -37,7 +37,7 @@ contract ProduceTraceabilityV1  {
     ProduceSale[] public ProduceSales;
     address public owner;
     ProduceOwnership public pwn;
-    //ProduceManagement public pmg;
+    ProduceManagement public pmg;
 
     event ProduceAdded(address indexed farmer, bytes32 produce_hash, string produce_name, uint256 timestamp);
     event FarmerRegistered(string name, address indexed ethAddress, uint256 timestamp);
@@ -70,7 +70,7 @@ contract ProduceTraceabilityV1  {
         address _farmer,
         address[] memory _agents
     ) public  onlyOwner onlyFarmer(_farmer) returns(bytes32) {
-        bytes32 _produceHash = pwn.pm.registerConsignment(_farmer, _lot_number, _weight, _storage_date);
+        bytes32 _produceHash = pmg.registerConsignment(_farmer, _lot_number, _weight, _storage_date);
         //pwn.pm.registerProduce()
         FarmProduce memory newProduct = FarmProduce({
             produceHash: _produceHash,
@@ -81,7 +81,7 @@ contract ProduceTraceabilityV1  {
         });
 
         FarmProduces.push(newProduct);
-        pwn.addOwnership(1, _produceHash);
+        pwn.addOwnership(_farmer, 1, _produceHash);
         uint256 index = getProduceCount();
         lookUpProd[_produceHash] = index - 1;
         isProduce[_farmer] = _produceHash;
@@ -126,14 +126,14 @@ contract ProduceTraceabilityV1  {
         require(_amount <= _quantity, "Insufficient produce to sell");
         ProduceSale memory newSale = ProduceSale({
             consignmentHash: _produceHash,
-            _referenceNumber: _referenceNumber,
+            referenceNumber: _referenceNumber,
             buyer: _buyer,
             amount: _amount,
             price: _price
         });
         
         ProduceSales.push(newSale);
-        pwn.changeOwnership(1, _produceHash, _buyer);
+        pwn.changeOwnership(_farmer, 1, _produceHash, _buyer);
         FarmProduces[index].quantity -= _amount;
         uint256 counter = getProduceSaleCount();
         lookUpSale[_referenceNumber] = counter - 1;
@@ -152,7 +152,7 @@ contract ProduceTraceabilityV1  {
         return FarmProduces.length;
     }
 
-    function getProduce(uint256 index) public view returns (bytes32 memory, string memory, address, uint256, address[] memory) {
+    function getProduce(uint256 index) public view returns (bytes32, string memory, address, uint256, address[] memory) {
         require(index < FarmProduces.length, "Invalid index");
     
         FarmProduce storage Produce = FarmProduces[index];

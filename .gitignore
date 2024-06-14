@@ -32,3 +32,7 @@
 *.exe
 *.out
 *.app
+
+#Node Modules
+xrp/node_modules
+xrp/package-lock.json

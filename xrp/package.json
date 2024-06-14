@@ -1,0 +1,16 @@
+{
+  "name": "axk-ledger-xrp",
+  "version": "1.0.0",
+  "description": "",
+  "main": "axkXrpLedger.js",
+  "scripts": {
+    "test": "node axkXrpLedger.js"
+  },
+  "keywords": [],
+  "author": "[afrikabal] [kelvin@afrikabal.org]",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.19.2",
+    "xrpl": "^3.1.0"
+  }
+}
