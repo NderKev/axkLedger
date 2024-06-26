@@ -4,7 +4,8 @@
 •Consensus Protocol 
 •Ledger 
 •Transaction 
-•Point to Point and Specialized •ledger payment types 
+•Point to Point and Specialized 
+•ledger payment types 
 •Token 
 •Accounts 
 •AXKL sidechains 
@@ -44,5 +45,11 @@ AXK aspect
 Financial institution Bridge 
 Individual Consumers to carry value all around 
 
-
-
+Axk Token Contract
+`https://www.oklink.com/amoy/address/0xfe8dc8ccc0cbb71b55e5008e5401079df72b429c/contract`
+Produce Traceability  Contract
+`https://www.okx.com/ar/web3/explorer/amoy/address/0xc198fcb934f44305b7cf5cdad1323b67b43cb601/contract`
+Produce Management Contract
+`https://www.okx.com/ar/web3/explorer/amoy/address/0x3f8fb454c86f89c43f8581a5830594452a5684fa/contract`
+Produce Ownership Contract
+`https://www.oklink.com/amoy/address/0x87bdf774e5a0c9124f62ba3d578396b4721951fd/contract`
