@@ -16,11 +16,11 @@ contract axkToken is Initializable, ERC20Upgradeable, ERC20PausableUpgradeable, 
     }
     
     function initialize() initializer public {
-        __ERC20_init("axkToken", "AXK");
+        __ERC20_init("AxK Token", "AXK");
         __ERC20Capped_init(800000000000 * 10 ** decimals());
         __ERC20Pausable_init();
         __Ownable_init(msg.sender);
-        __ERC20Permit_init("axkToken");
+        __ERC20Permit_init("AXK");
         __UUPSUpgradeable_init();
 
         _mint(msg.sender, 100000000 * 10 ** decimals());
