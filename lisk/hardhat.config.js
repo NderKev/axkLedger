@@ -1,4 +1,4 @@
-//require("hardhat/config");
+require("@nomicfoundation/hardhat/config");
 require("@nomicfoundation/hardhat-toolbox");
 require("@nomicfoundation/hardhat-ignition");
 require("@nomicfoundation/hardhat-verify");
@@ -19,7 +19,7 @@ module.exports = {
   etherscan: {
     // Use "123" as a placeholder, because Blockscout doesn't need a real API key, and Hardhat will complain if this property isn't set.
     apiKey: {
-      "lisk-sepolia": "123"
+      "lisk-sepolia": process.env.LINK_SEPOLIA_API
     },
     customChains: [
       {

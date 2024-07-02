@@ -9,18 +9,18 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20CappedUpgradeable.sol";
 
-contract axkToken is Initializable, ERC20Upgradeable, ERC20PausableUpgradeable, OwnableUpgradeable, ERC20PermitUpgradeable, UUPSUpgradeable, ERC20CappedUpgradeable  {
+contract AxkToken is Initializable, ERC20Upgradeable, ERC20PausableUpgradeable, OwnableUpgradeable, ERC20PermitUpgradeable, UUPSUpgradeable, ERC20CappedUpgradeable  {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
     
     function initialize() initializer public {
-        __ERC20_init("axkToken", "AXK");
+        __ERC20_init("AxkToken", "AXK");
         __ERC20Capped_init(800000000000 * 10 ** decimals());
         __ERC20Pausable_init();
         __Ownable_init(msg.sender);
-        __ERC20Permit_init("axkToken");
+        __ERC20Permit_init("AxkToken");
         __UUPSUpgradeable_init();
 
         _mint(msg.sender, 100000000 * 10 ** decimals());
