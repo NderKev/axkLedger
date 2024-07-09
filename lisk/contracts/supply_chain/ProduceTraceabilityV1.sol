@@ -44,10 +44,10 @@ contract ProduceTraceabilityV1  {
     event FarmerVerified(address indexed ethAddress, uint256 timestamp);
     event ProduceSold(address indexed source, bytes32 produce_hash , uint256 referenceNumber, uint256 timestamp);
 
-    constructor(address prod_own_addr) { //address prod_mgmt_addr
+    constructor(address prod_own_addr, address prod_mgmt_addr) { //address prod_mgmt_addr
         owner = msg.sender;
         pwn = ProduceOwnership(prod_own_addr);
-        //pmg = ProduceManagement(prod_mgmt_addr);
+        pmg = ProduceManagement(prod_mgmt_addr);
     }
 
     modifier onlyOwner() {
