@@ -215,25 +215,25 @@ router.post('/balances/getTxStatus', function(req, res){
   {
     web3.setProvider(new Web3.providers.HttpProvider(provider.provider));
      const txHash = req.body.txHash;
- web3.eth.getTransactionReceipt(txHash, function(err, receipt){
-       if (!err) {
-         if (receipt == null) {
-         res.send({"status":"pending"});
-         } else {
-           var receiptStatus = receipt.status;
-           if(receiptStatus == 0x1) {
-          res.send({"status":"success"});
-           }
-           else if (receiptStatus == 0x0) {
- 	      res.send({"status":"fail"})
-         }
-       }
-     } else {
- 	   console.log(err);
-     res.send({"error" : "true"});
-       }
-     });
- }
+      web3.eth.getTransactionReceipt(txHash, function(err, receipt){
+            if (!err) {
+              if (receipt == null) {
+              res.send({"status":"pending"});
+              } else {
+                var receiptStatus = receipt.status;
+                if(receiptStatus == 0x1) {
+                res.send({"status":"success"});
+                }
+                else if (receiptStatus == 0x0) {
+              res.send({"status":"fail"})
+              }
+            }
+          } else {
+          console.log(err);
+          res.send({"error" : "true"});
+            }
+          });
+      }
  finally{
      var time = new Date(Date.now()).toUTCString();
      console.log("CheckBalances.js [getTxStatus] Executed at UTC Time :" + time);

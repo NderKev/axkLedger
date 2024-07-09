@@ -19,10 +19,13 @@
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "@nomicfoundation/hardhat-verify": "^2.0.8",
+    "bignumber": "^1.1.0",
+    "bignumber.js": "^9.1.2",
     "chai": "^4.2.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
-    "hardhat": "^2.22.3"
+    "hardhat": "^2.22.3",
+    "web3": "^4.10.0"
   }
 }

@@ -24,27 +24,33 @@ const logStruct = (func, error) => {
     return {'func': func, 'file': 'create_eth_wallet', error}
   }
 
-  const  createETHTestCr = async(user,  userid, key) => {
+  const  createETHTestCr = async(user,  userid, mnemonic, pass, encrypted) => {
     try {
     //const network = bitcoin.networks.testnet; // if we are using (testnet) then  we use networks.testnet 
   
- 
+    
     const path =`m/49'/1'/0'/0`; // we use  `m/49'/1'/0'/0` for testnet network
     const hdPath =  require('./libs/path');
     const wallet = {};
-    let mnemonic = key;//bip39.generateMnemonic()
     
-  
-    
+    //let mnemonic = bip39.generateMnemonic()
+    let comb = pass + user;
+    const matchPwd = bcrypt.compareSync(String(comb), encrypted);
+       //validTx.passphrase == cryptPwd ? true : false;
+       if (!matchPwd) {
+         return errorResponse(401,"passphrase_wrong", {message : "wrongPassphrase"});
+       }
 
-    const wallet_eth = hdkey.EthereumHDKey.fromMnemonic(mnemonic);
+    let kystr = CryptoJS.AES.decrypt(mnemonic, pinHash(comb));
+    const _mnemonic = kystr.toString(CryptoJS.enc.Utf8); 
+    const wallet_eth = hdkey.EthereumHDKey.fromMnemonic(_mnemonic, pinHash(comb));
     console.log(wallet_eth.getWallet().getAddressString()) 
     const eth_address = wallet_eth.getWallet().getAddressString();
   
     wallet.user_id = userid;
-    wallet.mnemonic = mnemonic;//CryptoJS.AES.encrypt(mnem, str).toString();
+    wallet.mnemonic = CryptoJS.AES.encrypt(_mnemonic, pinHash(comb)).toString();
     wallet.email = user;
-    //wallet.password = bcrypt.hashSync(String(str), saltRounds);
+    wallet.passphrase = bcrypt.hashSync(String(comb), saltRounds);
     //wallet.wif = cryptKey;
     wallet.index = 0;
     wallet.address = eth_address;
@@ -53,7 +59,7 @@ const logStruct = (func, error) => {
     console.log(`
     Wallet generated:
      - Address  : ${eth_address}, 
-     - Mnemonic : ${mnemonic}
+     - Mnemonic : ${_mnemonic}
          
     `)
   
@@ -66,10 +72,10 @@ const logStruct = (func, error) => {
     }
     }
 
-    router.post('/create/wallet', auth_ver, async(req, res, next) => {
+    router.post('/create/wallet',  async(req, res, next) => {
         console.log(req.body);
-        const {pin, username, user_id} = req.body
-        const wallet = await createETHTestCr(username, user_id, key);
+        const { username, user_id, mnemonic, passphrase, encrypted} = req.body
+        const wallet = await createETHTestCr(username, user_id, mnemonic, passphrase, encrypted);
       
         return res.status(wallet.status).send(wallet.data);
     });
@@ -86,7 +92,21 @@ const logStruct = (func, error) => {
       return errorResponse(error.status, error.message);
     }
     }
-  
+    const checkEthPriceUSD = async () => {
+      const ethPrice = require('eth-price');
+ 
+      try {
+        const response = await ethPrice('usd');//transactionsModel.updateTransactionRef(validInput);
+        //const response = {};
+        //response.data = price;
+        console.log(response);
+        return successResponse(200,response)
+      } catch (error) {
+        console.error('error -> ', logStruct('checkEthPriceUSD', error))
+        return errorResponse(error.status, error.message);
+      }
+      
+      }
     const calculateEthPrices = async (data) => {
       try {
          const httpProvider = new Web3.providers.HttpProvider(provider.sepolia);
@@ -104,7 +124,7 @@ const logStruct = (func, error) => {
          bal.crypto = "eth";
          bal.current = data.address;
          bal.balance = bal_wei;
-         let getPrice = await transactionController.checkEthPriceUSD();
+         let getPrice = await checkEthPriceUSD();
          let eth_prc = getPrice.data;
          console.log(eth_prc);
          eth_prc = eth_prc[0];
@@ -136,7 +156,7 @@ const logStruct = (func, error) => {
      }
 
 
-     router.post('/get/balance', auth_ver, async(req, res, next) => {
+     router.post('/get/balance', async(req, res, next) => {
       const em = req.body.email;
       const user_id = req.body.user_id;
       //req.body.user_id = req.session.user_id;

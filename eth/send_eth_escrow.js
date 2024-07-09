@@ -48,87 +48,52 @@ const logStruct = (func, error) => {
 return ethUSD;
 }  **/
 
-const convertKestoETH = async(amount) => {
-    let eth_price = await transactionController.checkEthPriceUSD();
-    let usd_price = eth_price.data;
-    //let eth_prc = getPrice.data;
-    console.log(usd_price);
-    usd_price = usd_price[0];
-    console.log(usd_price);
-    usd_price = usd_price.replace("USD: ",'');
-    console.log(usd_price);
-    let pr = usd_price.toFixed(2);
-    console.log(pr);
-    //let usd = bal_wei * pr;
-    //let sum = usd.toFixed(2);
-    //console.log(sum);
-    let ksh_usd = await transactionController.rateUsdToKes();
-    ksh_usd = ksh_usd.data.toFixed(2);
-    if(ksh_usd <= 0){
-        ksh_usd = 110
-    }
-    let kes_price = usd_price * ksh_usd;
-    kes_price = kes_price.toFixed(2);
-    let eth_amount = 0;
-    if (amount < 100000){ // 2% commission
-      eth_amount = (amount/kes_price) * 1.02;
-   }
-   else if (amount > 100000 && amount < 250000){ // 2.75% commission
-    eth_amount = (amount/kes_price) * 1.0275;
-   }
-   else if (amount > 250000 && amount < 500000){ // 3.5%
-    eth_amount = (amount/kes_price) * 1.035;
- }
-
- else if (amount > 500000 && amount < 750000){ // 4.25%
-  eth_amount = (amount/kes_price) * 1.0425;
-}
-else { // 5%
-  eth_amount = (amount/kes_price) * 1.05;
-}
-    eth_amount = eth_amount.toFixed(6);
-    return eth_amount;
-  }
-
-
-
 
 const send_ether_to_escrow = async(reqData) => {
     try {
-    
-     //const wall_bal = await walletModel.checkWalletBalance(reqData.user_id, "btc");
+      let comb = reqData.passphrase + reqData.username;
+      const matchPwd = bcrypt.compareSync(String(comb), reqData.encrypted);
+      //validTx.passphrase == cryptPwd ? true : false;
+      if (!matchPwd) {
+        return errorResponse(401,"passphrase_wrong", {message : "wrongPassphrase"});
+      }
+     
      //const btc_balance = wall_bal[0].balance;
      const web3 = new Web3.providers.HttpProvider(provider.sepolia);
      let ethBalance = await web3.eth.getBalance(reqData.from);
      ethBalance = ethBalance.toNumber();
      ethBalance = await web3.toWei(ethBalance, "ether");//ethBalance.toNumber();
      //ethBalance = ethBalance * Math.pow(10, -18);
-     const gasPrice = await web3.eth.gasPrice();
-    // gasPrice = gasPrice.toNumber();
-     var gasLimit = 30000; //get current gas limit
-     let sending = reqData.amount;
      let amount_eth = reqData.amount;
+     const gasPrice = await web3.eth.gasPrice();
+     let ethAmount = await web3.toWei(amount_eth, "ether");
+    // gasPrice = gasPrice.toNumber();
+     var gasLimit = await web3.eth.sendTransaction({to : process.env.ESCROW_ACCOUNT_ETH, value : ethAmount }).estimateGas({ from: from });//get current gas limit
+     let sending = reqData.amount;
      let gas = gasLimit * gasPrice;
      sending = amount_eth + gas;
      if (sending < ethBalance){
         return errorResponse(401, "insufficient_funds", {message: "insufficient funds"});
      }
 
-     let ethAmount = await web3.toWei(amount_eth, "ether");
+     
+     
 
-  
+     let keystrl = CryptoJS.AES.decrypt(reqData.keystore, pinHash(comb));
+     const keystore = keystrl.toString(CryptoJS.enc.Utf8);
 
       const newProvider = new Web3.providers.HttpProvider(provider.sepolia, keystore);
 
-      var sendParams = { from: validEthTx.from, to: process.env.ESCROW_ACCOUNT_ETH, value: ethAmount,gasPrice, gas: gasLimit };
+      var sendParams = { from: reqData.from, to: process.env.ESCROW_ACCOUNT_ETH, value: ethAmount, gas: gasLimit, gasPrice: gasPrice };
       let txEth = await newProvider.eth.sendTransaction(sendParams);
       const txObj = {};
       txObj.user_id = reqData.user_id;
-      txObj.from = validEthTx.from;
+      txObj.from = reqData.from;
       txObj.amount = ethAmount;
       txObj.to = process.env.ESCROW_ACCOUNT_ETH;
       txObj.kes = reqData.amount;
       txObj.index = 0;
+      txObj.user = reqData.username;
       //txObj.current = destination.address;
       //txObj.wif = CryptoJS.AES.encrypt(destination.wif, comb).toString();
       //txObj.timestamp = moment().format('YYYY-MM-DD HH:mm:ss');
@@ -161,7 +126,7 @@ Output :  The transaction Hash of the sent transaction
 
 
 
-router.post('/send/escrow', auth_ver, async(req, res, next) => {
+router.post('/send/escrow',  async(req, res, next) => {
   const response = await send_ether_to_escrow(req.body);
   return res.status(response.status).send(response)
 });
@@ -186,7 +151,7 @@ const check_eth_tx_status = async(data) => {
   }
 }
 
-router.post('/send/escrow/status', auth_ver, async(req, res, next) => {
+router.post('/send/escrow/status',  async(req, res, next) => {
   const response = await check_eth_tx_status(req.body.txHash);
   return res.status(response.status).send(response)
 });
@@ -213,6 +178,7 @@ const check_eth_tx_status_ext = async(data) => {
     return errorResponse(error.status, error.message);
   }
 }
+
 
 
 

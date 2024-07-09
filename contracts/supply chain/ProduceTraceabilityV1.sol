@@ -32,22 +32,24 @@ contract ProduceTraceabilityV1  {
     mapping(address => bytes32) public isProduce;
     mapping(uint256 => uint256) public lookUpSale;
     address[] public FarmerAddresses;
-
+    
     FarmProduce[] public FarmProduces;
     ProduceSale[] public ProduceSales;
     address public owner;
+    //address public produce_management_contract = "0xFE8dc8cCC0CbB71B55e5008e5401079DF72B429c";
     ProduceOwnership public pwn;
     ProduceManagement public pmg;
+
 
     event ProduceAdded(address indexed farmer, bytes32 produce_hash, string produce_name, uint256 timestamp);
     event FarmerRegistered(string name, address indexed ethAddress, uint256 timestamp);
     event FarmerVerified(address indexed ethAddress, uint256 timestamp);
     event ProduceSold(address indexed source, bytes32 produce_hash , uint256 referenceNumber, uint256 timestamp);
 
-    constructor(address prod_own_addr) { //address prod_mgmt_addr
+    constructor(address prod_own_addr, address prod_mgmt_addr ) { //address prod_mgmt_addr
         owner = msg.sender;
         pwn = ProduceOwnership(prod_own_addr);
-        //pmg = ProduceManagement(prod_mgmt_addr);
+        pmg = ProduceManagement(prod_mgmt_addr);
     }
 
     modifier onlyOwner() {
@@ -70,6 +72,7 @@ contract ProduceTraceabilityV1  {
         address _farmer,
         address[] memory _agents
     ) public  onlyOwner onlyFarmer(_farmer) returns(bytes32) {
+        //pmg = ProduceManagement(produce_management_contract);
         bytes32 _produceHash = pmg.registerConsignment(_farmer, _lot_number, _weight, _storage_date);
         //pwn.pm.registerProduce()
         FarmProduce memory newProduct = FarmProduce({

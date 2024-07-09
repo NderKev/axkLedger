@@ -1,12 +1,19 @@
 const { Client, Wallet } = require('xrpl');
 const express = require('express');
+const moment = require('moment');
+const CryptoJS = require("crypto-js");
+const pinHash = require('sha256');
+const bcrypt = require('bcryptjs');
+const saltRounds = 10;
+
 const router  = express.Router();
-const {successResponse, errorResponse} = require('./libs/response');
+const {successResponse, errorResponse} = require('../xrp/libs/response');
    const logStruct = (func, error) => {
-    return {'func': func, 'file': 'wallet', error}
+    return {'func': func, 'file': 'Axk_Xrp', error}
   }
-  
-  const createXrpWalletTestNet = async() => {
+
+
+  const generateXrpWalletTestNet = async() => {
     try
     { 
           // Define the network client
@@ -27,23 +34,32 @@ const {successResponse, errorResponse} = require('./libs/response');
         // Disconnect when done (If you omit this, Node.js won't end the process)
         await client.disconnect()
      }catch (error) {
-            console.error('error -> ', logStruct('createXrpWalletTestNet', error))
+            console.error('error -> ', logStruct('generateXrpWalletTestNet', error))
             return errorResponse(error.status, error.message);
           }
   }
-  
-  router.get('/wallet/test/create', async(req, res, next) => {
-    const response = await createXrpWalletTestNet();
+
+  router.get('/test/generate', async(req, res, next) => {
+    const response = await generateXrpWalletTestNet();
     return res.status(response.status).send(response)
   });
 
-  const createFundXrpWalletTestNet = async(mnemonic) => {
+  const createFundXrpWalletTestNet = async(data) => {
     try
     { 
+        let comb = data.passpharse + data.username;
+        const matchPwd = bcrypt.compareSync(String(comb), data.encrypted);
+           //validTx.passphrase == cryptPwd ? true : false;
+           if (!matchPwd) {
+             return errorResponse(401,"passphrase_wrong", {message : "wrongPassphrase"});
+           }
+    
+        let kystr = CryptoJS.AES.decrypt(data.mnemonic, pinHash(comb));
+        const _mnemonic = kystr.toString(CryptoJS.enc.Utf8);
           // Define the network client
         const client = new Client("wss://s.altnet.rippletest.net:51233")
         await client.connect()
-        const _wallet = Wallet.fromMnemonic(mnemonic);
+        const _wallet = Wallet.fromMnemonic(_mnemonic);
         const fund_result = await client.fundWallet(_wallet);
         const test_wallet = fund_result.wallet
         console.log(fund_result)
@@ -62,19 +78,28 @@ const {successResponse, errorResponse} = require('./libs/response');
           }
   }
 
-  router.get('/wallet/test/fund', async(req, res, next) => {
-    const response = await createFundXrpWalletTestNet(req.body.mnemonic);
+  router.post('/test/fund', async(req, res, next) => {
+    const response = await createFundXrpWalletTestNet(req.body);
     return res.status(response.status).send(response)
   });
 
-  const getXrpWalletTestNetAccountInfo = async(mnemonic) => {
+  const getXrpWalletTestNetAccountInfo = async(data) => {
     try
     { 
+        let comb = data.passpharse + data.username;
+        const matchPwd = bcrypt.compareSync(String(comb), data.encrypted);
+           //validTx.passphrase == cryptPwd ? true : false;
+           if (!matchPwd) {
+             return errorResponse(401,"passphrase_wrong", {message : "wrongPassphrase"});
+           }
+    
+        let kystr = CryptoJS.AES.decrypt(data.mnemonic, pinHash(comb));
+        const _mnemonic = kystr.toString(CryptoJS.enc.Utf8);
           // Define the network client
         
         const client = new Client("wss://s.altnet.rippletest.net:51233")
         await client.connect()
-        const wallet = Wallet.fromMnemonic(mnemonic);
+        const wallet = Wallet.fromMnemonic(_mnemonic);
           // Get info from the ledger about the address we just funded
         const response = await client.request({
             "command": "account_info",
@@ -97,12 +122,14 @@ const {successResponse, errorResponse} = require('./libs/response');
           }
   }
 
-  router.post('/wallet/test/account', async(req, res, next) => {
-    const response = await getXrpWalletTestNetAccountInfo(req.body.mnemonic);
+  router.post('/test/account', async(req, res, next) => {
+    const response = await getXrpWalletTestNetAccountInfo(req.body);
     return res.status(response.status).send(response)
   });
 
 
 
 
+
   module.exports = router;
+

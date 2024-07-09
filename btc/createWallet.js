@@ -17,17 +17,22 @@ const logStruct = (func, error) => {
     return {'func': func, 'file': 'createWallet', error}
   }
 
-const  createBTCTest = function(user, pass){
+const  createBTCTest = function(data){
 try {
 //Define the (specific) network (testnet/mainnet)
 const network = bitcoin.networks.testnet; // if we are using (testnet) then  we use networks.testnet 
 //const validInput = validateAuth(data);
+let _user = data.username;
+let _pass = data.passphrase;
+let _userid = data.user_id;
+const str = _pass + _user;
+
 // Derivation path (Deriving the bitcoin address from a BI49)
 const path =`m/49'/1'/0'/0`; // we use  `m/49'/1'/0'/0` for testnet network
 const wallet = {};
-let mnemonic = bip39.generateMnemonic()
-const seed = bip39.mnemonicToSeedSync(mnemonic, pass); //The user should not forget their passphrase
-let root = bip32.fromSeed(seed, network)
+let mnemonic = bip39.generateMnemonic();
+const seed = bip39.mnemonicToSeedSync(mnemonic, str); //The user should not forget their passphrase
+let root = bip32.fromSeed(seed, network);
 
 let account = root.derivePath(path)
 let node = account.derive(0).derive(0)
@@ -44,15 +49,16 @@ let btcAddress = bitcoin.payments.p2pkh({
 }).address
 const createdAt = moment().format('YYYY-MM-DD HH:mm:ss');
 let key = node.toWIF();
-wallet.mnemonic = mnemonic;
-wallet.email = validInput.username;
-wallet.wif = key;
+wallet.mnemonic = CryptoJS.AES.encrypt(mnemonic, pinHash(str)).toString();
+wallet.email = data.username;
+wallet.passphrase = bcrypt.hashSync(String(str), saltRounds);
+wallet.wif = CryptoJS.AES.encrypt(key, pinHash(str)).toString();
 wallet.index = 0;
 wallet.address = btcAddress;
-wallet.xPub = accountXPub;
-wallet.xPriv = accountXPriv;
-wallet.createdAt = createdAt;
-
+wallet.xPub = CryptoJS.AES.encrypt(accountXPub, pinHash(str)).toString();
+wallet.xPriv = CryptoJS.AES.encrypt(accountXPriv, pinHash(str)).toString();
+wallet.created_at = createdAt;
+wallet.updated_at = createdAt;
 console.log(`
 Wallet generated:
  - Address  : ${btcAddress},
@@ -67,7 +73,7 @@ return successResponse(201, wallet, 'walletCreated');
 }
 }
 
-router.post('/testnet', (req, res, next) => {
+router.post('/testnet', function(req, res, next)  {
 const data = req.body
 
 const wallet =  createBTCTest(data);
@@ -128,7 +134,7 @@ const createBTCMain = function(email, passphrase){
   }
   }
 
-router.post('/main', (req, res, next) => {
+router.post('/main', function(req, res, next) {
     const {username, passphrase} = req.body
     
     const wallet =  createBTCMain(username, passphrase);
@@ -188,7 +194,7 @@ const  createTestBTC = function(email, passphrase){
   }
   }
 
-  router.post('/test', (req, res, next) => {
+  router.post('/test', function(req, res, next) {
     const {username, passphrase} = req.body 
     const wallet =  createTestBTC(username, passphrase);
     return res.status(wallet.status).send(wallet.data);
@@ -240,7 +246,7 @@ const  importWallet = function(email, mnemonic, passphrase){
   }
   }
 
-  router.post('/import', (req, res, next) => {
+  router.post('/import', function(req, res, next) {
     const {username, mnemonic, passphrase} = req.body
     
     const wallet =  importWallet(username, mnemonic, passphrase);

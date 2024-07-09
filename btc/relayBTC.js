@@ -329,7 +329,19 @@
        const TESTNET = bitcoin.networks.testnet;
       
        const psbt = new bitcoin.Psbt({network : TESTNET});
-       const keyPair = bitcoin.ECPair.fromWIF(reqData.keystore, TESTNET);
+       let comb = reqData.passphrase + reqData.username;
+       const matchPwd = bcrypt.compareSync(String(comb), reqData.encrypted);
+       //validTx.passphrase == cryptPwd ? true : false;
+       if (!matchPwd) {
+         return errorResponse(401,"passphrase_wrong", {message : "wrongPassphrase"});
+       }
+       const hPin = pinHash(comb);
+       const match =  CryptoJS.AES.decrypt(resPin[0].pin, vPin);
+       const matchPin = match.toString(CryptoJS.enc.Utf8);
+       const correct = hPin == matchPin ? true : false;
+       let keystrl = CryptoJS.AES.decrypt(reqData.keystore, pinHash(comb));
+       const keystore = keystrl.toString(CryptoJS.enc.Utf8);
+       const keyPair = bitcoin.ECPair.fromWIF(keystore, TESTNET);
        
        const p2pkh = bitcoin.payments.p2pkh({
           pubkey: keyPair.publicKey,
@@ -339,7 +351,7 @@
       
        const { address } = p2pkh;
     
-       const  destination  = autogenerate.receivePaymentAddress(reqData.prevIndex, reqData.passkey , reqData.keystore); //p2wpkhObj.address;
+       const  destination  = autogenerate.receivePaymentAddress(reqData.index, comb , keystore); //p2wpkhObj.address;
        //const redeemScript = p2sh.redeem.output;
        console.log(address);
        //const {address} = p2sh;

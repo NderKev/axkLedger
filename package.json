@@ -4,7 +4,10 @@
   "description": "*Aspect of AXK ledger *",
   "main": "index.js",
   "scripts": {
-    "test": "npx hardhat compile"
+    "compile": "npx hardhat compile",
+    "start": "node ./server",
+    "start:server": "node ./server",
+    "dev:server": "nodemon ./server"
   },
   "keywords": [],
   "author": "[NderKev][kelvin@afrikabal.org]",
@@ -30,8 +33,8 @@
     "ecpair": "^1.0.1",
     "eth-hd-wallet": "^0.5.1",
     "eth-price": "^0.1.5",
-    "ethers": "^6.1.0",
     "ethereum-waffle": "^4.0.10",
+    "ethers": "^6.1.0",
     "ethjs-provider-signer": "^0.1.4",
     "express": "^4.17.1",
     "hardhat": "^2.22.5",
@@ -45,6 +48,7 @@
     "sha256": "^0.2.0",
     "url": "^0.11.0",
     "web3": "^4.8.0",
-    "web3-eth-contract": "^4.4.0"
+    "web3-eth-contract": "^4.4.0",
+    "xrpl": "^3.1.0"
   }
 }
