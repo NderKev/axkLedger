@@ -3,7 +3,7 @@
 const {Web3, HttpProvider} = require("web3");
 require('dotenv').config();
 const sepolia_testnet_rpc = `https://sepolia.infura.io/v3/${process.env.INFURA_PROJECT_ID}`;
-//const {BigNumber} = require("bignumber-js");
+const {BigNumber} = require("bignumber-js");
 //const provider = new Theta.providers.HttpProvider('https://eth-rpc-api-testnet.thetatoken.org/rpc');
 const web3 = new Web3(sepolia_testnet_rpc);
 //const web3 = new Web3.providers.HttpProvider(link_testnet_rpc);
@@ -850,7 +850,7 @@ const abi = [
   ];
 
 const contractAddress = '0x54049e53f00548013bc7a816616a8893d81bd2ae';
-const ten18 = 1 * Math.pow(10, 18);//(new BigNumber(10)).pow(18)
+const ten18 = (new BigNumber(10)).pow(18)
 // Initialize contract
 const AXKContract = new web3.eth.Contract(abi, contractAddress);
 

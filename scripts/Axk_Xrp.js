@@ -1,4 +1,4 @@
-const { Client, Wallet } = require('xrpl');
+const { Client, Wallet, xrpToDrops, dropsToXrp } = require('xrpl');
 const express = require('express');
 const moment = require('moment');
 const CryptoJS = require("crypto-js");
@@ -127,7 +127,76 @@ const {successResponse, errorResponse} = require('../xrp/libs/response');
     return res.status(response.status).send(response)
   });
 
+  const createPaymentXrpTestnet = async(data) => {
+    try
+    { 
+        let comb = data.passpharse + data.username;
+        const matchPwd = bcrypt.compareSync(String(comb), data.encrypted);
+           //validTx.passphrase == cryptPwd ? true : false;
+           if (!matchPwd) {
+             return errorResponse(401,"passphrase_wrong", {message : "wrongPassphrase"});
+           }
+    
+        let kystr = CryptoJS.AES.decrypt(data.mnemonic, pinHash(comb));
+        const _mnemonic = kystr.toString(CryptoJS.enc.Utf8);
+          // Define the network client
+        
+        const client = new Client("wss://s.altnet.rippletest.net:51233")
+        await client.connect()
+        const wallet = Wallet.fromMnemonic(_mnemonic);
+          // Get info from the ledger about the address we just funded
+      
 
+        const tx = {
+          TransactionType: "Payment",
+          Account: wallet.address,
+          Amount: xrpToDrops(data.amount),
+          Destination: process.env.XRP_ESCROW_ACCOUNT
+        };
+      
+          // Submit the transaction --------------------------------------------
+          console.log("Submitting the transaction (Takes 3-5 seconds)");
+          const submitted_tx = await client.submitAndWait(tx, {
+            autofill: true, // Adds in fields that can be automatically set like fee and last_ledger_sequence
+            wallet: wallet
+          });
+        // Check transaction results -----------------------------------------
+        console.log(
+          "Transaction result:",
+          submitted_tx.result.meta.TransactionResult
+        );
+        // Look up the new account balances by sending a request to the ledger
+          const account_info = await client.request({
+            command: "account_info",
+            account: wallet.address
+          });
+
+          // See https://xrpl.org/account_info.html#account_info ---------------
+          const balance = account_info.result.account_data.Balance;
+          console.log(`New account balance: ${balance} drops`);
+          console.log("Numeric Balance :" + dropsToXrp(balance))
+              
+              let _response =
+                  {
+                    "txResult" : submitted_tx.result.meta.TransactionResult,
+                    "details" : submitted_tx,
+                    "amount" : xrpToDrops(data.amount),
+                    "destination" : process.env.XRP_ESCROW_ACCOUNT
+                  }
+              return successResponse(200, _response, {"info" : _response}, "xrp payment transaction info");
+
+              // Disconnect when done (If you omit this, Node.js won't end the process)
+              await client.disconnect()
+    }catch (error) {
+        console.error('error -> ', logStruct('createPaymentXrpTestnet', error))
+        return errorResponse(error.status, error.message);
+    }
+  }
+
+  router.post('/test/payment', async(req, res, next) => {
+    const response = await createPaymentXrpTestnet(req.body);
+    return res.status(response.status).send(response)
+  });
 
 
 
