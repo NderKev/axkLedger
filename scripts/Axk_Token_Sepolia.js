@@ -945,7 +945,7 @@ async function unpause(fromAddress, privateKey) {
 
 // Function to mint axk tokens to video uploader and viewer
 async function mint(to, amount,  fromAddress, privateKey) {
-    const _amount = amount * ten18;//(new BigNumber(amount)).multipliedBy(ten18);
+    const _amount = (new BigNumber(amount)).multipliedBy(ten18);
     const tx = AXKContract.methods.mint(to, _amount);
     const mint_response = await sendTransaction(tx, fromAddress, privateKey);
     return mint_response;
@@ -958,7 +958,7 @@ async function mint(to, amount,  fromAddress, privateKey) {
 
 // Function to transfer Axk Token from one user to another
 async function transfer(to, amount, fromAddress, privateKey) {
-    const _amount =  amount * ten18;//(new BigNumber(amount)).multipliedBy(ten18);
+    const _amount =  (new BigNumber(amount)).multipliedBy(ten18);//amount * ten18;//
     const tx = AXKContract.methods.transfer(to, _amount);
     const transfer_response= await sendTransaction(tx, fromAddress, privateKey);
     return transfer_response;
