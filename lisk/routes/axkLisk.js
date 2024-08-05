@@ -40,7 +40,7 @@ const transferAxkToken = async(data) => {
   }
 
   router.post('/transfer',  async(req, res, next) => {
-    req.body.fromAdress = fromAddress;
+    req.body.fromAddress = fromAddress;
     req.body.privateKey = privateKey;
     console.log(req.body);
     //const {to, amount} = req.body

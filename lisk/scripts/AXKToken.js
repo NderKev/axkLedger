@@ -1770,6 +1770,7 @@ const fromAddress = process.env.ESCROW_ACCOUNT_ETH;
 async function sendTransaction(tx, fromAddress, privateKey) {
     try {
         const gas = await tx.estimateGas({ from: fromAddress });
+        console.log("gas :" + gas);
         const gasPrice = await web3.eth.getGasPrice();
         const count = await web3.eth.getTransactionCount(fromAddress);
         const txData = tx.encodeABI();
@@ -1787,10 +1788,10 @@ async function sendTransaction(tx, fromAddress, privateKey) {
         );
 
         const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
-        console.log('Transaction receipt:', receipt);
+        console.log('Transaction receipt: ', receipt);
         return receipt;
     } catch (error) {
-        console.error('Transaction error:', error);
+        console.error('Transaction error: ', error);
     }
 }
 
@@ -1911,12 +1912,13 @@ if (isValidUint256(_amount)) {
     //console.log(AXKContract);
     const tx = AXKContract.methods.mint(data.to, _amount);
     const mint_response = await sendTransaction(tx, data.fromAddress, data.privateKey);
-    let data = {
+    let _data = {
       txHash : mint_response.transactionHash,
       amount : _amount,
       to : data.to
     };
-    return data;
+
+    return _data;
 }
 
 /**
@@ -1926,10 +1928,13 @@ if (isValidUint256(_amount)) {
 
 // Function to transfer Axk Token from one user to another
 async function transfer(dtt) {
+    console.log(dtt);
     //const _amount =  (new BigNumber(amount)).multipliedBy(ten18);
     const _amount = Number(dtt.amount) * ten18;
-    const tx = AXKContract.methods.transfer(dtt.to, _amount);
+    console.log(_amount);
+    const tx = AXKContract.methods.transfer(dtt.to, _amount);//.send({ from: dtt.fromAddress });
     const transfer_response = await sendTransaction(tx, dtt.fromAddress, dtt.privateKey);
+    console.log("response : " + transfer_response);
     let dataTx = {
       txHash : transfer_response.transactionHash,
       amount : _amount,
