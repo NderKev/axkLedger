@@ -1,11 +1,13 @@
 
 // Set up web3 with Lisk provider
-const {Web3} = require("web3");
+const {Web3, HttpProvider} = require("web3");
 const link_testnet_rpc = 'https://rpc.sepolia-api.lisk.com';
 const {BigNumber} = require("bignumber.js");
 //const provider = new Theta.providers.HttpProvider('https://eth-rpc-api-testnet.thetatoken.org/rpc');
 const web3 = new Web3(link_testnet_rpc);
-//const web3 = new Web3.providers.HttpProvider(link_testnet_rpc);
+const chainId = 4202
+const BN = require('bn.js');
+//const web = new Web3.providers.HttpProvider(link_testnet_rpc);
 
 // Contract ABI and address
 const abi = [
@@ -1758,23 +1760,26 @@ const axkTokenAbi = [
 
 const contractAddress = '0x3f8FB454c86f89C43F8581a5830594452a5684fa';///'0x3f8FB454c86f89C43F8581a5830594452a5684fa';
 const proxyAddress = '0xC198Fcb934F44305B7cf5CdAD1323b67b43cB601';
-const ten18 = (new BigNumber(10)).pow(18);
+const ten18 = 1 * Math.pow(10, 18);//(new BigNumber(10)).pow(18);
 // Initialize contract
 const AXKContract = new web3.eth.Contract(axkTokenAbi, contractAddress);
 const AXKProxy = new web3.eth.Contract(proxy, proxyAddress);
-
+const privateKey = process.env.LISK_PRIV_KEY;
+const fromAddress = process.env.ESCROW_ACCOUNT_ETH;
 // Helper function to send transactions
 async function sendTransaction(tx, fromAddress, privateKey) {
     try {
         const gas = await tx.estimateGas({ from: fromAddress });
         const gasPrice = await web3.eth.getGasPrice();
-
+        const count = await web3.eth.getTransactionCount(fromAddress);
         const txData = tx.encodeABI();
-
+        const nonce = web3.utils.toHex(count);
+        
         const signedTx = await web3.eth.accounts.signTransaction(
             {
                 to: contractAddress,
                 data: txData,
+                nonce: nonce,
                 gas,
                 gasPrice,
             },
@@ -1831,33 +1836,87 @@ async function readFunction(contractAddress, plugin) {
 **/
 
 // Function to approve Axk Token spending allowance to an address
-async function approve(spender, value, fromAddress, privateKey) {
-    const _value = (new BigNumber(value)).multipliedBy(ten18);
-    const tx = AXKContract.methods.approve(spender, _value);
-    const approve_response = await sendTransaction(tx, fromAddress, privateKey);
-    return approve_response;
+async function approve(dtx) { //spender, value, fromAddress, privateKey
+    const _value = Number(dtx.value) * ten18; //(new BigNumber(value)).multipliedBy(ten18);
+    const tx = AXKContract.methods.approve(dtx.spender, _value);
+    const approve_response = await sendTransaction(tx, dtx.fromAddress, dtx.privateKey);
+    let dataAprv = {
+      txHash : approve_response.transactionHash,
+      value : _value,
+      to : dtx.fromAddress
+    };
+    return dataAprv;
 }
 
 // Function to pause Axk Token contract
-async function pause(fromAddress, privateKey) {
+async function pause(dtp) { //fromAddress, privateKey
     const tx = AXKContract.methods.pause();
-    const pause_response = await sendTransaction(tx, fromAddress, privateKey);
-    return pause_response;
+    const pause_response = await sendTransaction(tx, dtp.fromAddress, dtp.privateKey);
+    let dataPs = {
+      txHash : pause_response.transactionHash,
+      to : dtp.fromAddress
+    };
+    return dataPs;
 }
 
 // Function to unpause or resume the Axk Token Contract
-async function unpause(fromAddress, privateKey) {
+async function unpause(dtunp) { // fromAddress, privateKey
     const tx = AXKContract.methods.unpause();
-    const un_pause_response = await sendTransaction(tx, fromAddress, privateKey);
-    return un_pause_response;
+    const un_pause_response = await sendTransaction(tx, dtunp.fromAddress, dtunp.privateKey);
+    let dataUps = {
+      txHash : un_pause_response.transactionHash,
+      to : dtunp.fromAddress
+    };
+    return dataUps;
 }
 
 // Function to mint axk tokens to video uploader and viewer
-async function mint(to, amount,  fromAddress, privateKey) {
-    const _amount = (new BigNumber(amount)).multipliedBy(ten18);
-    const tx = AXKContract.methods.mint(to, _amount);
-    const mint_response = await sendTransaction(tx, fromAddress, privateKey);
-    return mint_response;
+async function mint(data) {//to, amount,  fromAddress, privateKey
+//const httpProvider = new Web3.providers.HttpProvider(link_testnet_rpc);
+//const web3 = new Web3(httpProvider);
+console.log(data.amount);
+//const _amnt = new BN(data.amount);//web3.utils.toBN(amount);
+//console.log(_amnt);
+ //(new BigNumber(amount)).multipliedBy(ten18);
+const _amount = Number(data.amount) * ten18;
+console.log(_amount);
+//const _amount = new BN(bigAmount); //web3.utils.toBN(_amnt * ten18);
+//console.log(_amount);
+    // Validate Ethereum address
+//const isValidAddress = (address) => web3.utils.isAddress(address);
+
+// Validate uint256
+const isValidUint256 = (value) => Number.isInteger(value) && value >= 0;
+
+/** Check validations
+if (!isValidAddress(to)) {
+    console.error('Invalid "to" address');
+}
+if (!isValidAddress(fromAddress)) {
+    console.error('Invalid "fromAddress"');
+} **/
+if (!isValidUint256(_amount)) {
+    console.error('Invalid "amount", must be a uint256');
+}
+
+// If all validations pass, proceed with minting isValidAddress(to) && isValidAddress(fromAddress) &&
+if (isValidUint256(_amount)) {
+    // Proceed with minting
+    // Example: contract.methods.mint(data.to, data.amount).send({ from: data.fromAddress });
+    console.log('Minting tokens...');
+} else {
+    console.error('Validation failed');
+}  
+    //const axkToken = new web3.eth.Contract(axkTokenAbi, contractAddress);
+    //console.log(AXKContract);
+    const tx = AXKContract.methods.mint(data.to, _amount);
+    const mint_response = await sendTransaction(tx, data.fromAddress, data.privateKey);
+    let data = {
+      txHash : mint_response.transactionHash,
+      amount : _amount,
+      to : data.to
+    };
+    return data;
 }
 
 /**
@@ -1866,21 +1925,34 @@ async function mint(to, amount,  fromAddress, privateKey) {
 **/
 
 // Function to transfer Axk Token from one user to another
-async function transfer(to, amount, fromAddress, privateKey) {
-    const _amount =  (new BigNumber(amount)).multipliedBy(ten18);
-    const tx = AXKContract.methods.transfer(to, _amount);
-    const transfer_response= await sendTransaction(tx, fromAddress, privateKey);
-    return transfer_response;
+async function transfer(dtt) {
+    //const _amount =  (new BigNumber(amount)).multipliedBy(ten18);
+    const _amount = Number(dtt.amount) * ten18;
+    const tx = AXKContract.methods.transfer(dtt.to, _amount);
+    const transfer_response = await sendTransaction(tx, dtt.fromAddress, dtt.privateKey);
+    let dataTx = {
+      txHash : transfer_response.transactionHash,
+      amount : _amount,
+      to : dtt.to
+    };
+
+    return dataTx;
+   // return transfer_response;
 }
 
 
 
 // Function to transfer approved Axk Token tokens 
-async function transferFrom(from, to, value, fromAddress, privateKey) {
-    const _value = (new BigNumber(value)).multipliedBy(ten18);
-    const tx = AXKContract.methods.transferFrom(from, to, _value);
-    const transfer_from_response = await sendTransaction(tx, fromAddress, privateKey);
-    return transfer_from_response;
+async function transferFrom(dt) {
+    const _value = Number(dt.value) * ten18; //(new BigNumber(value)).multipliedBy(ten18);
+    const tx = AXKContract.methods.transferFrom(dt.from, dt.to, _value);
+    const transfer_from_response = await sendTransaction(tx, dt.fromAddress, dt.privateKey);
+    let dataTrs = {
+      txHash : transfer_from_response.transactionHash,
+      value : _value,
+      to : dt.to
+    };
+    return dataTrs;
 }
 
 /**
@@ -1889,8 +1961,8 @@ async function transferFrom(from, to, value, fromAddress, privateKey) {
 **/
 
 // Function to get user address Axk Token spending allowance 
-async function allowance(owner, spender) {
-    const allowance = await AXKContract.methods.allowance(owner, spender).call();
+async function allowance(dta) { // owner, spender
+    const allowance = await AXKContract.methods.allowance(owner, dta.spender).call();
     console.log( "allowance: " + allowance);
     //let big_int_bal = BigInt(balance.toString());
     let allowance_axk = Number(allowance.toString());

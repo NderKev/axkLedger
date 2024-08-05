@@ -4,7 +4,7 @@ const axkToken = require('../scripts/AXKToken');
 require('dotenv').config();
 const {successResponse, errorResponse} = require('../../eth/libs/response');
 const privateKey = process.env.LISK_PRIV_KEY;
-const fromAdress = process.env.ESCROW_ACCOUNT_ETH;
+const fromAddress = process.env.ESCROW_ACCOUNT_ETH;
 const logStruct = (func, error) => {
     return {'func': func, 'file': 'axkLisk', error}
   }
@@ -20,7 +20,7 @@ const logStruct = (func, error) => {
   }
 
   router.post('/mint',  async(req, res, next) => {
-    req.body.fromAdress = fromAdress;
+    req.body.fromAddress = fromAddress;
     req.body.privateKey = privateKey;
     console.log(req.body);
     //const {to, amount} = req.body
@@ -31,8 +31,8 @@ const logStruct = (func, error) => {
 
 const transferAxkToken = async(data) => {
     try{   
-      const mint_axk = await axkToken.mint(data);
-      return successResponse(200, mint_axk, 'transfer'); 
+      const transfer_axk = await axkToken.transfer(data);
+      return successResponse(200, transfer_axk, 'transfer'); 
     } catch (error) {
     console.error('error -> ', logStruct('transferAxkToken', error))
     return errorResponse(error.status, error.message);
@@ -40,7 +40,7 @@ const transferAxkToken = async(data) => {
   }
 
   router.post('/transfer',  async(req, res, next) => {
-    req.body.fromAdress = fromAdress;
+    req.body.fromAdress = fromAddress;
     req.body.privateKey = privateKey;
     console.log(req.body);
     //const {to, amount} = req.body
