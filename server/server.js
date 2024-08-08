@@ -20,7 +20,7 @@ const app = express();
 configureMiddleware(app);
 
 // Set-up static asset path
-app.use(express.static(path.join('server', 'public')));
+//app.use(express.static(path.join('server', 'public')));
 
 // Set-up Routes
 configureRoutes(app);
