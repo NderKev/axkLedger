@@ -1795,7 +1795,7 @@ async function sendTransaction(tx, fromAddress, privateKey) {
     }
 }
 
-/** Helper function to call smart contract functions
+// Helper function to call smart contract functions
 async function callFunction(tx, fromAddress, privateKey) {
     try {
         const gas = await tx.estimateGas({ from: fromAddress });
@@ -1806,13 +1806,13 @@ async function callFunction(tx, fromAddress, privateKey) {
        
         
 
-        const receipt = await contract.methods.mint(recipientAddress, amount).send({ from: account[0].address });
+        const receipt = await AXKContract.methods.mint(recipientAddress, amount).send({ from: account[0].address });
         console.log('Transaction receipt:', receipt);
         return receipt;
     } catch (error) {
         console.error('Transaction error:', error);
     }
-}  **/
+}  
 
 /**  read function helper
 async function readFunction(contractAddress, plugin) {
