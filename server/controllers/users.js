@@ -6,10 +6,23 @@ const { WelcomeMail } = require('../mails');
 const User = require('../models/User');
 const sendEmail = require('../helpers/sendMail');
 
+
+const generateUniqueId = (length)=> {
+  const characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let id = '';
+  for (let i = 0; i < length; i++) {
+      const randomIndex = Math.floor(Math.random() * characters.length);
+      id += characters[randomIndex];
+  }
+  return id;
+}
+
 // @route   POST api/users
 // @desc    Register User
 // @access  Public
 exports.register = async (req, res) => {
+  
+ 
   const errors = validationResult(req);
 
   if (!errors.isEmpty()) {
@@ -19,7 +32,11 @@ exports.register = async (req, res) => {
   const { email, password } = req.body;
   const nameMatch = email.match(/^([^@]*)@/);
   const name = nameMatch ? nameMatch[1] : null;
-  req.body.name = name;
+  //req.body.name = name;
+  console.log(name);
+  const wallet_id  = generateUniqueId(32);
+  console.log(wallet_id);
+  //req.body.wallet_id = walletid;
 
   try {
     let user =
@@ -29,13 +46,13 @@ exports.register = async (req, res) => {
       return res.status(400).json({
         errors: [
           {
-            msg: 'Invalid credentials',
+            msg: 'Invalid credentials register user',
           },
         ],
       });
     }
 
-    user = new User({ name, email, password });
+    user = new User({ name, email, password, wallet_id });
 
     const salt = await bcrypt.genSalt(10);
 
@@ -47,7 +64,7 @@ exports.register = async (req, res) => {
       await sendEmail(user.email, WelcomeMail(user.name));
     } catch (error) {
       console.log(error);
-    }
+    } 
 
     const payload = {
       user: {
@@ -66,7 +83,7 @@ exports.register = async (req, res) => {
     );
   } catch (err) {
     console.error(err.message);
-    return res.status(500).json({ msg: 'Internal server error' });
+    return res.status(500).json({ msg: 'Internal server error register user' });
   }
 };
 

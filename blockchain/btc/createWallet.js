@@ -17,14 +17,18 @@ const logStruct = (func, error) => {
     return {'func': func, 'file': 'createWallet', error}
   }
 
+
+
 const  createBTCTest = function(data){
 try {
 //Define the (specific) network (testnet/mainnet)
 const network = bitcoin.networks.testnet; // if we are using (testnet) then  we use networks.testnet 
 //const validInput = validateAuth(data);
+
+
 let _user = data.username;
 let _pass = data.passphrase;
-let _userid = data.user_id;
+let _walletid = data.wallet_id;
 const str = _pass + _user;
 
 // Derivation path (Deriving the bitcoin address from a BI49)
@@ -47,18 +51,20 @@ let btcAddress = bitcoin.payments.p2pkh({
   pubkey: node.publicKey,
   network: network,
 }).address
-const createdAt = moment().format('YYYY-MM-DD HH:mm:ss');
+
+//const createdAt = moment().format('YYYY-MM-DD HH:mm:ss');
 let key = node.toWIF();
+wallet.wallet_id = _walletid;
 wallet.mnemonic = CryptoJS.AES.encrypt(mnemonic, pinHash(str)).toString();
-wallet.email = data.username;
+wallet.username = data.username;
 wallet.passphrase = bcrypt.hashSync(String(str), saltRounds);
 wallet.wif = CryptoJS.AES.encrypt(key, pinHash(str)).toString();
 wallet.index = 0;
 wallet.address = btcAddress;
-wallet.xPub = CryptoJS.AES.encrypt(accountXPub, pinHash(str)).toString();
-wallet.xPriv = CryptoJS.AES.encrypt(accountXPriv, pinHash(str)).toString();
-wallet.created_at = createdAt;
-wallet.updated_at = createdAt;
+wallet.xpub = CryptoJS.AES.encrypt(accountXPub, pinHash(str)).toString();
+wallet.xpriv = CryptoJS.AES.encrypt(accountXPriv, pinHash(str)).toString();
+//wallet.created_at = createdAt;
+//wallet.updated_at = createdAt;
 console.log(`
 Wallet generated:
  - Address  : ${btcAddress},
@@ -66,7 +72,9 @@ Wallet generated:
  - Mnemonic : ${mnemonic}
      
 `)
+
 return successResponse(201, wallet, 'walletCreated');
+
 } catch(error){
   console.error('error -> ', logStruct('createBTCTest', error))
   return errorResponse(error.status, error.message);
@@ -74,11 +82,10 @@ return successResponse(201, wallet, 'walletCreated');
 }
 
 router.post('/testnet', function(req, res, next)  {
-const data = req.body
-
+const data = req.body;
 const wallet =  createBTCTest(data);
-return res.status(wallet.status).send(wallet.data)
-})
+return res.status(wallet.status).send(wallet.data);
+});
 
   
 
@@ -176,9 +183,9 @@ const  createTestBTC = function(email, passphrase){
   wallet.wif = key;
   wallet.index = 0;
   wallet.address = btcAddress;
-  wallet.xPub = accountXPub;
-  wallet.xPriv = accountXPriv;
-  wallet.createdAt = createdAt;
+  wallet.xpub = accountXPub;
+  wallet.xpriv = accountXPriv;
+  //wallet.createdAt = createdAt;
 
   console.log(`
   Wallet generated:

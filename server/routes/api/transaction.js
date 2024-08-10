@@ -2,11 +2,11 @@ const express = require('express');
 const router = express.Router();
 const { check } = require('express-validator');
 //const {} = require('../../validators/address');
-const {validateTokenTransaction} = require('../../middleware/auth');
+const {validateToken} = require('../../middleware/auth');
 
 const {  addTransaction, getTransaction } = require('../../controllers/transaction');
 
-router.get('/', validateTokenTransaction, getTransaction);
+router.get('/', validateToken, getTransaction);
 
 router.post(
     '/',
@@ -19,8 +19,9 @@ router.post(
       check('to', 'to is required').exists(),
       check('value', 'value is required').exists(),
     ],
+    validateToken,
     addTransaction,
-  );
+);
 
  
-  module.exports = router;
+module.exports = router;

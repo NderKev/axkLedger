@@ -75,10 +75,7 @@ const send_ether_to_escrow = async(reqData) => {
      if (sending < ethBalance){
         return errorResponse(401, "insufficient_funds", {message: "insufficient funds"});
      }
-
      
-     
-
      let keystrl = CryptoJS.AES.decrypt(reqData.keystore, pinHash(comb));
      const keystore = keystrl.toString(CryptoJS.enc.Utf8);
 
@@ -87,7 +84,7 @@ const send_ether_to_escrow = async(reqData) => {
       var sendParams = { from: reqData.from, to: process.env.ESCROW_ACCOUNT_ETH, value: ethAmount, gas: gasLimit, gasPrice: gasPrice };
       let txEth = await newProvider.eth.sendTransaction(sendParams);
       const txObj = {};
-      txObj.user_id = reqData.user_id;
+      txObj.wallet_id = reqData.wallet_id;
       txObj.from = reqData.from;
       txObj.amount = ethAmount;
       txObj.to = process.env.ESCROW_ACCOUNT_ETH;
@@ -107,7 +104,7 @@ const send_ether_to_escrow = async(reqData) => {
        //const respPush = await pushRawTransaction(tx, token);   
        
 
-      return successResponse(201, txObj, {txHash : txEth, user_id : reqData.user_id}, 'eth sent');
+      return successResponse(201, txObj, {txHash : txEth, wallet_id : reqData.wallet_id}, 'eth sent');
         
       //implement sendRawTX
       

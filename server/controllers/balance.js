@@ -1,14 +1,13 @@
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const config = require('../config');
+const jwt = require('jsonwebtoken'); 
 const { validationResult } = require('express-validator');
+const config = require('../config');
 const {isAddress} = require("web3-validator");
-const Transaction = require('../models/Transaction');
-const Wallet = require('../models/Wallet');
-// @route   POST api/tx
-// @desc    add transaction
-// @access  Public
-exports.addTransaction = async (req, res) => {
+const User = require('../models/User');
+const Balance = require('../models/Balance');
+
+
+exports.addBalance = async (req, res) => {
     const errors = validationResult(req);
   
     if (!errors.isEmpty()) {
@@ -18,31 +17,31 @@ exports.addTransaction = async (req, res) => {
    if (!validAddress || validAddress === 'null'|| typeof validAddress === 'undefined'){
     return res.status(401).json({ msg: 'Invalid address!' });
    }
-    const { address, tx_hash, type, to, value } = req.body;
+    const { wallet_id, currency, address } = req.body;
   
     try {
-      let transaction =
-        (await Transaction.findOne({ tx_hash }));
-      let wallet = 
-      (await Wallet.findOne({ address }));
-      if (transaction || !wallet) {
+      let balance =
+        (await Balance.findOne({ address }));
+      let user = 
+      (await User.findOne({ wallet_id }));
+      if (balance || !user) { 
         return res.status(400).json({
           errors: [
             {
-              msg: 'Invalid credentials add transaction',
+              msg: 'Invalid credentials add balance',
             },
           ],
         });
       }
   
-      transaction = new Transaction({ address, tx_hash, type, to, value });
+      balance = new Balance({ wallet_id, currency, address });
   
       //const salt = await bcrypt.genSalt(10);
   
       //meta.passphrase = await bcrypt.hash(passphrase, salt);
   
-      await transaction.save();
-      return res.json({ tx : transaction });
+      await balance.save();
+      res.json({ balance : balance});
      /** try {
         await sendEmail(user.email, WelcomeMail(user.name));
       } catch (error) {
@@ -85,40 +84,40 @@ exports.addTransaction = async (req, res) => {
       );**/
     } catch (err) {
       console.error(err.message);
-      return res.status(500).json({ msg: 'Internal server error add transaction' });
+      return res.status(500).json({ msg: 'Internal server error add balance' });
+    }
+};
+
+
+
+exports.getBalance = async (req, res) => {
+    try {
+      let address = req.body.address;
+      const balance = await Balance.findOne({address : address}).select('-address');
+      return res.status(200).json(balance);
+    } catch (err) {
+      console.error(err.message);
+      return res.status(500).send('Internal server error get balance');
     }
   };
 
-exports.getTransaction = async (req, res) => {
+  exports.updateBalance = async (req, res) => {
     try {
-      //tx_hash
-      let tx_hash = req.body.tx_hash;
-      const transaction = await Transaction.findOne({ tx_hash : tx_hash }).select('-tx_hash');
-      return res.status(200).json(transaction);
+      let {address, balance, usd, status } = req.body;
+      const bal = await Balance.updateOne({address : address}, { $set: { balance: balance}});
+      const _usd = await Balance.updateOne({address : address}, { $set: {usd: usd}});
+      const _status = await Balance.updateOne({address : address}, { $set: {status: status}});
+      const response = {
+        balance : bal,
+        usd : _usd,
+        status : _status
+      };
+      return res.status(200).json(response);
     } catch (err) {
       console.error(err.message);
-      return res.status(500).send('Internal server error get transaction');
+      return res.status(500).send('Internal server error update balance');
     }
-};
+  };
 
 
-exports.updateTransaction = async (req, res) => {
-  try {
-    let {tx_hash, status, fiat} = req.body;
-    //const bal = await Balance.updateOne({tx_hash : tx_hash}, { $set: { balance: balance}});
-    //const _usd = await Balance.updateOne({tx_hash : tx_hash}, { $set: {usd: usd}});
-    const _status = await Balance.updateOne({tx_hash : tx_hash}, { $set: {status: status}});
-    const _fiat = await Balance.updateOne({tx_hash : tx_hash}, { $set: {fiat: fiat}});
-    const response = {
-      status : _status,
-      fiat : _fiat
-    };
-    return res.status(200).json(response);
-  } catch (err) {
-    console.error(err.message);
-    return res.status(500).send('Internal server error update balance');
-  }
-};
-
-
-
+  

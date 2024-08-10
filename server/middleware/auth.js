@@ -18,12 +18,12 @@ const validateToken = (req, res, next) => {
       }
     });
   } catch (err) {
-    console.error('Internal auth error - error in token validation middleware');
+    console.error('Internal auth error in token validation middleware');
     res.status(500).json({ msg: 'Internal auth error' });
   }
 };
 
-const validateTokenMeta = (req, res, next) => {
+/** const validateTokenMeta = (req, res, next) => {
   const token = req.header('x-auth-token');
 
   if (!token) return res.status(401).json({ msg: 'Unauthorized request!' });
@@ -42,7 +42,7 @@ const validateTokenMeta = (req, res, next) => {
     console.error('Internal auth error - error in token validation middleware');
     res.status(500).json({ msg: 'Internal auth error' });
   }
-};
+}; **/
 
 const validateBearerToken = (req, res, next) => {
   const bearerHeader = req.headers['authorization'];
@@ -62,12 +62,12 @@ const validateBearerToken = (req, res, next) => {
       }
     });
   } catch (err) {
-    console.error('Internal auth error - error in token validation middleware');
+    console.error('Internal auth error  in token validation middleware');
     res.status(500).json({ msg: 'Internal auth error' });
   }
 };
 
-const validateTokenVideo = (req, res, next) => {
+/** const validateTokenVideo = (req, res, next) => {
   const token = req.header('x-auth-token');
 
   if (!token) return res.status(401).json({ msg: 'Unauthorized request!' });
@@ -111,7 +111,7 @@ const validateTokenTransaction = (req, res, next) => {
 };
 
 
-/** const validateAddress = (req, res, next) => {
+const validateAddress = (req, res, next) => {
   const address = req.body.address;
 
   if (!address) return res.status(401).json({ msg: 'null address request!' });
@@ -141,8 +141,5 @@ const validateTokenTransaction = (req, res, next) => {
 
 module.exports = {
   validateToken,
-  validateTokenMeta,
-  validateBearerToken,
-  validateTokenVideo,
-  validateTokenTransaction
+  validateBearerToken
 };

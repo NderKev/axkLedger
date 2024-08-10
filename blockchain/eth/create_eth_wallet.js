@@ -24,7 +24,7 @@ const logStruct = (func, error) => {
     return {'func': func, 'file': 'create_eth_wallet', error}
   }
 
-  const  createETHTestCr = async(user,  userid, mnemonic, pass, encrypted) => {
+  const  createETHTestCr = async(user,  wallet_id, mnemonic, pass, encrypted) => {
     try {
     //const network = bitcoin.networks.testnet; // if we are using (testnet) then  we use networks.testnet 
   
@@ -47,9 +47,9 @@ const logStruct = (func, error) => {
     console.log(wallet_eth.getWallet().getAddressString()) 
     const eth_address = wallet_eth.getWallet().getAddressString();
   
-    wallet.user_id = userid;
+    wallet.wallet_id = wallet_id;
     wallet.mnemonic = CryptoJS.AES.encrypt(_mnemonic, pinHash(comb)).toString();
-    wallet.email = user;
+    wallet.username = user;
     wallet.passphrase = bcrypt.hashSync(String(comb), saltRounds);
     //wallet.wif = cryptKey;
     wallet.index = 0;
@@ -72,10 +72,11 @@ const logStruct = (func, error) => {
     }
     }
 
+
     router.post('/create/wallet',  async(req, res, next) => {
         console.log(req.body);
-        const { username, user_id, mnemonic, passphrase, encrypted} = req.body
-        const wallet = await createETHTestCr(username, user_id, mnemonic, passphrase, encrypted);
+        const { username, wallet_id, mnemonic, passphrase, encrypted} = req.body
+        const wallet = await createETHTestCr(username, wallet_id, mnemonic, passphrase, encrypted);
       
         return res.status(wallet.status).send(wallet.data);
     });
@@ -120,7 +121,7 @@ const logStruct = (func, error) => {
          bal_wei = bal_wei * Math.pow(10, -18);
          console.log(bal_wei);
          let bal = {}
-         bal.user_id = data.user_id;
+         bal.wallet_id = data.wallet_id;
          bal.crypto = "eth";
          bal.current = data.address;
          bal.balance = bal_wei;
@@ -142,13 +143,13 @@ const logStruct = (func, error) => {
         if(ksh_usd <= 0){
              ksh_usd = 110
           } **/
-        let ksh_usd = 110;
-         let tF = sum  * ksh_usd;
-         tF = tF.toFixed(2);
-         console.log(tF);
-         bal.kes = tF;
+        //let ksh_usd = 110;
+        // let tF = sum  * ksh_usd;
+         //tF = tF.toFixed(2);
+        // console.log(tF);
+         bal.usd = sum;
        
-        return successResponse(200, bal, {wallet_id: bal.current, eth_balance : bal.balance, kes_balance : bal.kes})
+        return successResponse(200, bal, {wallet_id: bal.current, eth_balance : bal.balance, usd_balance : bal.usd})
       } catch (error) {
         console.error('error -> ', logStruct('calculateEthPrices', error))
         return errorResponse(error.status, error.message);
@@ -157,13 +158,11 @@ const logStruct = (func, error) => {
 
 
      router.post('/get/balance', async(req, res, next) => {
-      const em = req.body.email;
-      const user_id = req.body.user_id;
-      //req.body.user_id = req.session.user_id;
-      //req.body.address = req.session.wallet_id;
-      const respBal = await calculateEthPrices(req.body);  
-    return res.status(respBal.status).send(respBal.data)
-  })
+
+      const respBal = await calculateEthPrices(req.body); 
+
+      return res.status(respBal.status).send(respBal.data)
+    });
 
     router.get('/get/addr/balance', async (req, res, next) => {
       const response = await calculateEthPrices(req.body);

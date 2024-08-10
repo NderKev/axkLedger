@@ -322,7 +322,7 @@
     }
    
 
-    const psbtTransactionBuilderCr = async(reqData) => {
+  const psbtTransactionBuilderCr = async(reqData) => {
       try {
        
        //sendFrom, keystr, sendTo, amount,  indexer, keyP, passphrase
@@ -333,13 +333,16 @@
        const matchPwd = bcrypt.compareSync(String(comb), reqData.encrypted);
        //validTx.passphrase == cryptPwd ? true : false;
        if (!matchPwd) {
-         return errorResponse(401,"passphrase_wrong", {message : "wrongPassphrase"});
+         return errorResponse(401, "passphrase_wrong", {message : "wrongPassphrase"});
        }
        const hPin = pinHash(comb);
-       const match =  CryptoJS.AES.decrypt(resPin[0].pin, vPin);
+       const match =  CryptoJS.AES.decrypt(reqData.encrypt, hPin);
        const matchPin = match.toString(CryptoJS.enc.Utf8);
-       const correct = hPin == matchPin ? true : false;
-       let keystrl = CryptoJS.AES.decrypt(reqData.keystore, pinHash(comb));
+       const correct = match == matchPin ? true : false;
+       if (!correct) {
+        return errorResponse(401 , "pin_wrong", {message : "wrongPin"});
+      }
+       let keystrl = CryptoJS.AES.decrypt(reqData.key, pinHash(comb));
        const keystore = keystrl.toString(CryptoJS.enc.Utf8);
        const keyPair = bitcoin.ECPair.fromWIF(keystore, TESTNET);
        
@@ -352,12 +355,11 @@
        const { address } = p2pkh;
     
        const  destination  = autogenerate.receivePaymentAddress(reqData.index, comb , keystore); //p2wpkhObj.address;
-       //const redeemScript = p2sh.redeem.output;
+      
        console.log(address);
-       //const {address} = p2sh;
+      
        let data = await getTransactions(reqData.from, token);
-      // console.log(data);
-      // console.log(data.data);
+     
      
        let balance = data.data.final_balance ;
        let confs = data.data.unconfirmed_balance;
@@ -376,8 +378,6 @@
        
        const utxos = txref.data.txrefs;
        console.log("UTXOS : " + utxos[0].tx_hash);
-       //const totalAmount = balance;
-        //const amount = parseFloat(amount);
         console.log(reqData.amount)
         l
         let withdrawAmount =  parseInt(reqData.amount * 100000000);
@@ -447,7 +447,7 @@
       }
 
 
- const psbtTransactionProd = async(sendFrom, keystore, sendTo, amount,  indexer, key, passphrase) => {
+  const psbtTransactionProd = async(sendFrom, keystore, sendTo, amount,  indexer, key, passphrase) => {
   try {
    const TESTNET = bitcoin.networks.testnet;
    const psbt = new bitcoin.Psbt({network : MAINNET})
@@ -734,9 +734,9 @@ const psbtTransactionBuildMain = async(sendFrom, keystore, key, sendTo, amount, 
      let fn = (final/100000000);
      console.log(fn);
      let bal = {}
-     bal.user_id = data.user_id;
+     bal.wallet_id = data.wallet_id;
      bal.crypto = "btc"
-     bal.current = data.address;
+     bal.address = data.address;
      bal.balance = fn;
      let getPrice = await checkBtcPrice();
      let btc_prc = getPrice.data;
@@ -746,12 +746,12 @@ const psbtTransactionBuildMain = async(sendFrom, keystore, key, sendTo, amount, 
      let usd = fn * pr;
      let sum = usd.toFixed(2);
      console.log(sum);
-     let tF = sum  * 110;
-     tF = tF.toFixed(2);
-     console.log(tF);
-     bal.kes = tF;
+     //let tF = sum  * 110;
+     //tF = tF.toFixed(2);
+     //console.log(tF);
+     bal.usd = sum;
    
-    return successResponse(200, bal, {wallet_id: bal.current, btc_balance : bal.balance, kes_balance : bal.kes})
+    return successResponse(200, bal, {address : bal.address, btc_balance : bal.balance, usd_balance : bal.usd})
   } catch (error) {
     console.error('error -> ', logStruct('calculatePrices', error))
     return errorResponse(error.status, error.message);
@@ -761,12 +761,8 @@ const psbtTransactionBuildMain = async(sendFrom, keystore, key, sendTo, amount, 
 
   
  router.post('/test/balance',  async(req, res, next) => {
-     const em = req.body.email;
-     const user_id = req.body.user_id;
-     //req.body.user_id = req.session.user_id;
-     //req.body.address = req.session.wallet_id;
      const respBal = await calculatePrices(req.body);
-   return res.status(respBal.status).send(respBal.data)
+     return res.status(respBal.status).send(respBal.data)
  })
 
  router.post('/main/balance', async(req, res, next) => {
@@ -841,7 +837,6 @@ router.post('/test/push', async(req, res, next) => {
 
 router.post('/test/push/cr',  async(req, res, next) => {
   const tx = JSON.stringify(req.body);
-  
   const response = await pushRawTransactionCr(tx, token);
   return res.status(response.status).send(response.data)
 });
