@@ -6,7 +6,7 @@ const BalanceSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  currency : {
+  crypto: {
     type: String,
     enum: ['axk', 'btc', 'eth', 'lisk', 'usdc', 'usdt', 'xrp'],
     required : true,
@@ -19,10 +19,12 @@ const BalanceSchema = new mongoose.Schema({
   balance: {
     type: mongoose.Types.Decimal128,
     default : 0,
+    required: true,
   },
   usd: {
     type: mongoose.Types.Decimal128,
     default : 0,
+    required: true,
   },
   status : {
     type: String,

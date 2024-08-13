@@ -1,6 +1,8 @@
 'use strict';
 
-require('dotenv').config();
+require('dotenv').config({ path: '../.env'});
+
+//dotenv.config();
 
 const http = require('http');
 const port = process.env.SRV_PORT || '4055';

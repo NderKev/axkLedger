@@ -117,13 +117,13 @@ const logStruct = (func, error) => {
          //bal_eth 
          let bal_eth_wei = Number(bal_eth);
          console.log(bal_eth_wei);
-         let bal_wei =  web3.utils.toWei(bal_eth_wei, "ether");
-         bal_wei = bal_wei * Math.pow(10, -18);
+         //let bal_wei =  web3.utils.toWei(bal_eth_wei, "ether");
+         let bal_wei = bal_eth_wei * Math.pow(10, -18);
          console.log(bal_wei);
          let bal = {}
          bal.wallet_id = data.wallet_id;
          bal.crypto = "eth";
-         bal.current = data.address;
+         bal.address = data.address;
          bal.balance = bal_wei;
          let getPrice = await checkEthPriceUSD();
          let eth_prc = getPrice.data;
@@ -149,7 +149,7 @@ const logStruct = (func, error) => {
         // console.log(tF);
          bal.usd = sum;
        
-        return successResponse(200, bal, {wallet_id: bal.current, eth_balance : bal.balance, usd_balance : bal.usd})
+        return successResponse(200, bal, {wallet_id: bal.wallet_id, eth_balance : bal.balance, usd_balance : bal.usd})
       } catch (error) {
         console.error('error -> ', logStruct('calculateEthPrices', error))
         return errorResponse(error.status, error.message);

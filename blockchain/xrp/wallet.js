@@ -1,5 +1,8 @@
 const { Client, Wallet } = require('xrpl');
 const express = require('express');
+const CryptoJS = require("crypto-js");
+const pinHash = require('sha256');
+const bcrypt = require('bcryptjs');
 const router  = express.Router();
 const {successResponse, errorResponse} = require('./libs/response');
    const logStruct = (func, error) => {
@@ -37,13 +40,22 @@ const {successResponse, errorResponse} = require('./libs/response');
     return res.status(response.status).send(response)
   });
 
-  const createFundXrpWalletTestNet = async(mnemonic) => {
+  const createFundXrpWalletTestNet = async(data) => {
     try
     { 
           // Define the network client
+          let comb = data.passphrase + data.username;
+          const matchPwd = bcrypt.compareSync(String(comb), data.encrypted);
+             //validTx.passphrase == cryptPwd ? true : false;
+             if (!matchPwd) {
+               return errorResponse(401,"passphrase_wrong", {message : "wrongPassphrase"});
+             }
+          let kystr = CryptoJS.AES.decrypt(data.mnemonic, pinHash(comb));
+          const _mnemonic = kystr.toString(CryptoJS.enc.Utf8); 
+
         const client = new Client("wss://s.altnet.rippletest.net:51233")
         await client.connect()
-        const _wallet = Wallet.fromMnemonic(mnemonic);
+        const _wallet = Wallet.fromMnemonic(_mnemonic);
         const fund_result = await client.fundWallet(_wallet);
         const test_wallet = fund_result.wallet
         console.log(fund_result)
@@ -62,19 +74,26 @@ const {successResponse, errorResponse} = require('./libs/response');
           }
   }
 
-  router.get('/wallet/test/fund', async(req, res, next) => {
-    const response = await createFundXrpWalletTestNet(req.body.mnemonic);
+  router.post('/wallet/test/fund', async(req, res, next) => {
+    const response = await createFundXrpWalletTestNet(req.body);
     return res.status(response.status).send(response)
   });
 
-  const getXrpWalletTestNetAccountInfo = async(mnemonic) => {
+  const getXrpWalletTestNetAccountInfo = async(data) => {
     try
     { 
           // Define the network client
-        
+          let comb = data.passphrase + data.username;
+          const matchPwd = bcrypt.compareSync(String(comb), data.encrypted);
+             //validTx.passphrase == cryptPwd ? true : false;
+             if (!matchPwd) {
+               return errorResponse(401,"passphrase_wrong", {message : "wrongPassphrase"});
+             }
+        let kystr = CryptoJS.AES.decrypt(data.mnemonic, pinHash(comb));
+        const _mnemonic = kystr.toString(CryptoJS.enc.Utf8); 
         const client = new Client("wss://s.altnet.rippletest.net:51233")
         await client.connect()
-        const wallet = Wallet.fromMnemonic(mnemonic);
+        const wallet = Wallet.fromMnemonic(_mnemonic);
           // Get info from the ledger about the address we just funded
         const response = await client.request({
             "command": "account_info",
@@ -98,7 +117,7 @@ const {successResponse, errorResponse} = require('./libs/response');
   }
 
   router.post('/wallet/test/account', async(req, res, next) => {
-    const response = await getXrpWalletTestNetAccountInfo(req.body.mnemonic);
+    const response = await getXrpWalletTestNetAccountInfo(req.body);
     return res.status(response.status).send(response)
   });
 

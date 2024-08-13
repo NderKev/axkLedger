@@ -14,10 +14,12 @@ exports.addTransaction = async (req, res) => {
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
+    if (req.body.mode !== "btc"){
    const validAddress = isAddress(req.body.address);
    if (!validAddress || validAddress === 'null'|| typeof validAddress === 'undefined'){
     return res.status(401).json({ msg: 'Invalid address!' });
    }
+  }
     const { address, tx_hash, type, to, value } = req.body;
   
     try {

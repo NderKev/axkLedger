@@ -225,7 +225,7 @@ exports.getWallet = async (req, res) => {
 exports.getWif = async (req, res) => {
   try {
     let wallet_id = req.body.wallet_id;
-    const wallet = await Wif.findMany({wallet_id : wallet_id}).select('-wallet_id');
+    const wallet = await Wif.findOne({wallet_id : wallet_id}).select('-wallet_id');
     return res.status(200).json(wallet);
   } catch (err) {
     console.error(err.message);

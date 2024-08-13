@@ -9,15 +9,18 @@ const Balance = require('../models/Balance');
 
 exports.addBalance = async (req, res) => {
     const errors = validationResult(req);
+
   
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
+    if (req.body.crypto !== "btc"){
    const validAddress = isAddress(req.body.address);
    if (!validAddress || validAddress === 'null'|| typeof validAddress === 'undefined'){
     return res.status(401).json({ msg: 'Invalid address!' });
    }
-    const { wallet_id, currency, address } = req.body;
+  }
+    const { wallet_id, crypto, address, balance, usd } = req.body;
   
     try {
       let balance =
@@ -34,7 +37,7 @@ exports.addBalance = async (req, res) => {
         });
       }
   
-      balance = new Balance({ wallet_id, currency, address });
+      balance = new Balance({ wallet_id, crypto, address, balance, usd });
   
       //const salt = await bcrypt.genSalt(10);
   
@@ -103,7 +106,19 @@ exports.getBalance = async (req, res) => {
 
   exports.updateBalance = async (req, res) => {
     try {
-      let {address, balance, usd, status } = req.body;
+      let {wallet_id, address, balance, usd, status } = req.body;
+      let user = 
+      (await User.findOne({ wallet_id }));
+      if (!user) { 
+        return res.status(400).json({
+          errors: [
+            {
+              msg: 'Invalid credentials update balance',
+            },
+          ],
+        });
+      }
+      
       const bal = await Balance.updateOne({address : address}, { $set: { balance: balance}});
       const _usd = await Balance.updateOne({address : address}, { $set: {usd: usd}});
       const _status = await Balance.updateOne({address : address}, { $set: {status: status}});
