@@ -24,7 +24,7 @@ router.post(
     '/update',
     [
       check('wallet_id', 'Wallet ID is required').not().isEmpty(),
-      check('address', 'Please include a mnemonic').not().isEmpty(),
+      check('address', 'Please include an address').not().isEmpty(),
       //check('crypto', 'Please include a currency').not().isEmpty(),
       check('balance', 'Please include a passphrase').not().isEmpty(),
       check('usd', 'Please include a passphrase').not().isEmpty()

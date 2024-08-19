@@ -8,6 +8,7 @@ const User = require('../models/User');
 const BTC = require('../models/BTC');
 const Wif = require('../models/Wif');
 const EVM = require('../models/EVM');
+const XRP = require('../models/XRP');
 
 // @route   POST api/wallet
 // @desc    Register Wallet
@@ -207,6 +208,70 @@ exports.createEVM = async (req, res) => {
     }
   };
 
+
+exports.createXRP = async (req, res) => {
+    const errors = validationResult(req);
+  
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    /** const validAddress = isAddress(req.body.address);
+   if (!validAddress || validAddress === 'null'|| typeof validAddress === 'undefined'){
+    return res.status(401).json({ msg: 'Invalid address!' });
+   } **/
+    const { wallet_id, pubKey, privKey, address, balance} = req.body;
+  
+    try {
+      let xrp =
+        (await XRP.findOne({ address }));
+        let wallet = 
+        (await Wallet.findOne({ wallet_id }));
+      if (xrp || !wallet) {
+        return res.status(400).json({
+          errors: [
+            {
+              msg: 'Invalid credentials create XRP Wallet',
+            },
+          ],
+        });
+      }
+  
+      xrp = new XRP({ wallet_id, pubKey, privKey, address, balance});
+  
+      //const salt = await bcrypt.genSalt(10);
+  
+      //wallet.passphrase = await bcrypt.hash(passphrase, salt);
+  
+      await xrp.save();
+      return res.json({ xrp : address, balance : balance });
+  
+     /** try {
+        await sendEmail(user.email, WelcomeMail(user.name));
+      } catch (error) {
+        console.log(error);
+      } 
+  
+      const payload = {
+        wallet : {
+          id: wallet.id,
+        },
+      };
+  
+      jwt.sign(
+        payload,
+        config.JWT_SECRET,
+        { expiresIn: config.JWT_TOKEN_EXPIRES_IN },
+        (err, token) => {
+          if (err) throw err;
+          return res.json({ token });
+        },
+      ); **/
+    } catch (err) {
+      console.error(err.message);
+      return res.status(500).json({ msg: 'Internal server error create xrp wallet' });
+    }
+  };
+
 // @route   GET api/wallet
 // @desc    Get user by wallet id
 // @access  Public
@@ -255,6 +320,17 @@ exports.getEVM = async (req, res) => {
   }
 };
 
+exports.getXRP = async (req, res) => {
+  try {
+    let wallet_id = req.body.wallet_id;
+    const xrp = await EVM.findOne({wallet_id : wallet_id}).select('-wallet_id');
+    return res.status(200).json(xrp);
+  } catch (err) {
+    console.error(err.message);
+    return res.status(500).send('Internal server error get xrp');
+  }
+};
+
 exports.updateBTC = async (req, res) => {
   try {
     let {wallet_id, wif, address, index } = req.body;
@@ -272,6 +348,8 @@ exports.updateBTC = async (req, res) => {
     return res.status(500).send('Internal server error update btc');
   }
 };
+
+
 
 
 /**

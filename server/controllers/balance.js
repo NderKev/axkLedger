@@ -14,7 +14,10 @@ exports.addBalance = async (req, res) => {
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
-    if (req.body.crypto !== "btc"){
+
+  console.log(req.body.crypto);
+
+  if (req.body.crypto !== "btc" && req.body.crypto !== "xrp"){
    const validAddress = isAddress(req.body.address);
    if (!validAddress || validAddress === 'null'|| typeof validAddress === 'undefined'){
     return res.status(401).json({ msg: 'Invalid address!' });
@@ -23,11 +26,11 @@ exports.addBalance = async (req, res) => {
     const { wallet_id, crypto, address, balance, usd } = req.body;
   
     try {
-      let balance =
+      let bal =
         (await Balance.findOne({ address }));
       let user = 
       (await User.findOne({ wallet_id }));
-      if (balance || !user) { 
+      if (bal || !user) { 
         return res.status(400).json({
           errors: [
             {
@@ -37,14 +40,14 @@ exports.addBalance = async (req, res) => {
         });
       }
   
-      balance = new Balance({ wallet_id, crypto, address, balance, usd });
+      bal = new Balance({ wallet_id, crypto, address, balance, usd });
   
       //const salt = await bcrypt.genSalt(10);
   
       //meta.passphrase = await bcrypt.hash(passphrase, salt);
   
-      await balance.save();
-      res.json({ balance : balance});
+      await bal.save();
+      res.json({ address : address, balance : balance});
      /** try {
         await sendEmail(user.email, WelcomeMail(user.name));
       } catch (error) {

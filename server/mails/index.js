@@ -6,7 +6,7 @@ const WelcomeMail = (username = '{{nickname}}') => ({
   name: '001 | Registration Welcome',
   subject: 'Welcome to axkledger !',
   text: ((username) =>
-    `Hi ${username}!\n\nWelcome to axkledger and thank you for registering to our service!\n\Acces now: https://www.axkl.org \n\nEnjoy using on our platform!\n\nThe axkledger  Team
+    `Hi ${username}!\n\nWelcome to axkledger and thank you for registering to our service!\n\ Access now: https://www.axkl.org \n\nEnjoy using on our platform!\n\nThe axkledger  Team
     `)(username),
   html: ((username) =>
     `${MainLayout(

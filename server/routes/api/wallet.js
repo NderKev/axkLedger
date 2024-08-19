@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { check } = require('express-validator');
-const { createWallet, createBTC, createEVM, getWallet, getWif, getEVM, getBTC, updateBTC } = require('../../controllers/wallet');
+const { createWallet, createBTC, createEVM, createXRP, getWallet, getWif, getEVM, getBTC, updateBTC } = require('../../controllers/wallet');
 const {validateToken} = require('../../middleware/auth');
 
 router.post(
@@ -90,6 +90,19 @@ router.post(
   ],
   validateToken,
   updateBTC
+);
+
+router.post(
+  '/xrp',
+  [
+    check('wallet_id', 'Please include a wallet id').not().isEmpty(),
+    check('pubKey', 'Public Key is required').not().isEmpty(),
+    check('privKey', 'Please include Private Key').not().isEmpty(),
+    check('address', 'Please include xrp address').not().isEmpty(),
+    check('balance', 'Please include xrp balance').not().isEmpty()
+  ],
+  validateToken,
+  createXRP
 );
 
 module.exports = router;

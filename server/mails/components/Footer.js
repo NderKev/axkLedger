@@ -20,8 +20,8 @@ const Footer = () => `
                     <p class="text-build-content"
                       style="text-align: center; margin: 10px 0; margin-top: 10px; margin-bottom: 10px;"
                       data-testid="v8eZLeSfkPK"><span
-                        style="color:#245069;font-family:Roboto;font-size:13px;line-height:13px;">© 2020 Vintage
-                        Poker. All rights reserved.</span></p>
+                        style="color:#245069;font-family:Roboto;font-size:13px;line-height:13px;">© 2024 AXK 
+                        Ledger. All rights reserved.</span></p>
                   </div>
                 </td>
               </tr>
