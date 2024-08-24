@@ -14,7 +14,8 @@ const validateToken = (req, res, next) => {
         console.error(err);
       } else {
         req.user = decoded.user;
-        req.token = token;
+        req.body.wallet_id = decoded.wallet_id;
+        req.body.token = token;
         next();
       }
     });

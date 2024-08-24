@@ -58,11 +58,18 @@ const {successResponse, errorResponse} = require('./libs/response');
         const _wallet = Wallet.fromMnemonic(_mnemonic);
         const fund_result = await client.fundWallet(_wallet);
         const test_wallet = fund_result.wallet
-        console.log(fund_result)
+        console.log(fund_result);
+        const address = test_wallet.classicAddress;
+        const pubKey = CryptoJS.AES.encrypt(test_wallet.publicKey, pinHash(comb)).toString();
+        const privKey = CryptoJS.AES.encrypt(test_wallet.privateKey, pinHash(comb)).toString();
+        const balance = fund_result.balance;
         let wallet =
-            {
-              "wallet" : test_wallet,
-              "result" : fund_result
+            { 
+              "wallet_id" : data.wallet_id,
+              "address" : address,
+              "pubKey" : pubKey,
+              "privKey" : privKey,
+              "balance" : balance
             }
         return successResponse(200, wallet, {"wallet" : wallet}, "wallet created and funded");
 
@@ -101,10 +108,12 @@ const {successResponse, errorResponse} = require('./libs/response');
             "ledger_index": "validated"
         })
         console.log(response)
+        
         let _response =
             {
-              "wallet" : wallet.address,
-              "details" : response
+              "wallet_id" : data.wallet_id,
+              "address" : wallet.address,
+              "balance" : response.result.account_data.Balance
             }
         return successResponse(200, _response, {"info" : _response}, "wallet account info");
 
@@ -128,10 +137,17 @@ const {successResponse, errorResponse} = require('./libs/response');
     { 
        
           // Define the network client
-        
+        let comb = data.passphrase + data.username;
+        const matchPwd = bcrypt.compareSync(String(comb), data.encrypted);
+             //validTx.passphrase == cryptPwd ? true : false;
+             if (!matchPwd) {
+               return errorResponse(401,"passphrase_wrong", {message : "wrongPassphrase"});
+             }
+        let kystr = CryptoJS.AES.decrypt(data.mnemonic, pinHash(comb));
+        const _mnemonic = kystr.toString(CryptoJS.enc.Utf8); 
         const client = new Client("wss://s.altnet.rippletest.net:51233")
         await client.connect()
-        const wallet = Wallet.fromMnemonic(data.mnemonic);
+        const wallet = Wallet.fromMnemonic(_mnemonic);
           // Get info from the ledger about the address we just funded
       
 

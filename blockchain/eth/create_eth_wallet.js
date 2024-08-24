@@ -16,6 +16,9 @@ const hdPath =  require('./libs/path');
 const { hdkey } = require('@ethereumjs/wallet')
 //const autogenerate = require("./autogenerate");
 const provider = require('./libs/provider');
+const walletModel = require('../../server/psql/models/wallet');
+const { check, validationResult } = require('express-validator');
+const {validateToken} = require('../../server/psql/middleware/auth');
 
 const router  = express.Router();
 const {successResponse, errorResponse} = require('./libs/response');
@@ -24,7 +27,12 @@ const logStruct = (func, error) => {
     return {'func': func, 'file': 'create_eth_wallet', error}
   }
 
-  const  createETHTestCr = async(user,  wallet_id, mnemonic, pass, encrypted) => {
+  const  createETHTestCr = async(req, res) => {
+    const errors = validationResult(req);
+  
+    if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+    }
     try {
     //const network = bitcoin.networks.testnet; // if we are using (testnet) then  we use networks.testnet 
   
@@ -35,6 +43,7 @@ const logStruct = (func, error) => {
     
     //let mnemonic = bip39.generateMnemonic()
     let comb = pass + user;
+    let _passphrase = walletModel.getWallet(data.wallet_id)
     const matchPwd = bcrypt.compareSync(String(comb), encrypted);
        //validTx.passphrase == cryptPwd ? true : false;
        if (!matchPwd) {

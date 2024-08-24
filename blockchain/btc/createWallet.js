@@ -1,4 +1,5 @@
 //Import the required dependencies
+const axios = require('axios');
 const bip32 = require('bip32')
 const bip39 = require('bip39')
 const bitcoin = require('bitcoinjs-lib')
@@ -10,6 +11,10 @@ const pinHash = require('sha256');
 const bcrypt = require('bcryptjs');
 const saltRounds = 10;
 const autogenerate = require("./autogenerate");
+const walletModel = require('../../server/psql/models/wallet');
+const { check, validationResult } = require('express-validator');
+const {validateToken} = require('../../server/psql/middleware/auth');
+//const createWalletTestUrl = "localhost:8000/axkledger/v1/api/wallet/wallet";
 const router  = express.Router();
 const {successResponse, errorResponse} = require('./lib/response');
 
@@ -19,16 +24,20 @@ const logStruct = (func, error) => {
 
 
 
-const  createBTCTest = function(data){
+const  createBTCTest = async(req, res) => {
+const errors = validationResult(req);
+  
+if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+ }
 try {
-//Define the (specific) network (testnet/mainnet)
 const network = bitcoin.networks.testnet; // if we are using (testnet) then  we use networks.testnet 
 //const validInput = validateAuth(data);
 
 
-let _user = data.username;
-let _pass = data.passphrase;
-let _walletid = data.wallet_id;
+let _user = req.body.username;
+let _pass = req.body.passphrase;
+let _walletid = req.body.wallet_id;
 const str = _pass + _user;
 
 // Derivation path (Deriving the bitcoin address from a BI49)
@@ -52,19 +61,18 @@ let btcAddress = bitcoin.payments.p2pkh({
   network: network,
 }).address
 
-//const createdAt = moment().format('YYYY-MM-DD HH:mm:ss');
+
 let key = node.toWIF();
 wallet.wallet_id = _walletid;
 wallet.mnemonic = CryptoJS.AES.encrypt(mnemonic, pinHash(str)).toString();
-wallet.username = data.username;
+wallet.username = _user;
 wallet.passphrase = bcrypt.hashSync(String(str), saltRounds);
 wallet.wif = CryptoJS.AES.encrypt(key, pinHash(str)).toString();
 wallet.index = 0;
 wallet.address = btcAddress;
 wallet.xpub = CryptoJS.AES.encrypt(accountXPub, pinHash(str)).toString();
 wallet.xpriv = CryptoJS.AES.encrypt(accountXPriv, pinHash(str)).toString();
-//wallet.created_at = createdAt;
-//wallet.updated_at = createdAt;
+
 console.log(`
 Wallet generated:
  - Address  : ${btcAddress},
@@ -73,6 +81,9 @@ Wallet generated:
      
 `)
 
+await walletModel.createWallet(wallet);
+await walletModel.createBTC(wallet);
+await wallet.createWif({wallet_id : wallet.wallet_id, wif : wallet.wif, address : wallet.address});
 return successResponse(201, wallet, 'walletCreated');
 
 } catch(error){
@@ -81,19 +92,51 @@ return successResponse(201, wallet, 'walletCreated');
 }
 }
 
-router.post('/testnet', function(req, res, next)  {
-const data = req.body;
-const wallet =  createBTCTest(data);
+/** const createWalletServer = async(data, token)=>{
+  try {
+    //let push_url = `${push}?token=${token}`
+    const config = {
+      method : 'post',
+      url : createWalletTestUrl,
+      headers: {
+        'x-auth-token' : token
+       },
+      data : data
+    }
+    let response = await axios(config);
+    return  successResponse(200, response.data);
+  } catch(error){
+   console.error('error -> ', logStruct('createWalletServer', error))
+   return errorResponse(error.status, error.message);
+ }
+} **/
+
+router.post('/testnet', validateToken, [
+  check('wallet_id', 'Wallet id is required').not().isEmpty(),
+  check('passphrase', 'Please include a passphrase').not().isEmpty(),
+  check('username', 'Username is required').not().isEmpty()
+], async(req, res, next) => {
+
+const wallet =  createBTCTest(req, res);
+//const token = req.body.token;
+
+//console.log(token + " : " + data.data);
+
+//const wallet = await walletController.createWallet(data.data);
 return res.status(wallet.status).send(wallet.data);
 });
 
   
 
-const createBTCMain = function(email, passphrase){
+const createBTCMain = function(data){
   try{
   //Define the (specific) network (testnet/mainnet)
   const mainnet = bitcoin.networks.bitcoin; // if we are using (mainnet) then  we use networks.bitcoin 
-  
+  let _user = data.username;
+  let _pass = data.passphrase;
+  let _walletid = data.wallet_id;
+  const str = _pass + _user;
+
   // Derivation path (Deriving the bitcoin address from a BI49)
   const path =`m/49'/0'/0'/0`; // we use  `m/49'/0'/0'/0 for main network
   const wallet = {};
@@ -117,16 +160,16 @@ const createBTCMain = function(email, passphrase){
     network: mainnet,
   }).address
 
-  const createdAt = moment().format('YYYY-MM-DD HH:mm:ss');
   let key = node.toWIF();
-  wallet.mnemonic = mnemonic;
-  wallet.email = email;
-  wallet.wif = key;
+  wallet.wallet_id = _walletid;
+  wallet.mnemonic = CryptoJS.AES.encrypt(mnemonic, pinHash(str)).toString();
+  wallet.username = data.username;
+  wallet.passphrase = bcrypt.hashSync(String(str), saltRounds);
+  wallet.wif = CryptoJS.AES.encrypt(key, pinHash(str)).toString();
   wallet.index = 0;
   wallet.address = btcAddress;
-  wallet.xPub = accountXPub;
-  wallet.xPriv = accountXPriv;
-  wallet.createdAt = createdAt;
+  wallet.xpub = CryptoJS.AES.encrypt(accountXPub, pinHash(str)).toString();
+  wallet.xpriv = CryptoJS.AES.encrypt(accountXPriv, pinHash(str)).toString();
   console.log(`
   Wallet generated:
    - Address  : ${btcAddress},
@@ -134,18 +177,23 @@ const createBTCMain = function(email, passphrase){
    - Mnemonic : ${mnemonic}
        
   `)
-  return successResponse(200, wallet);
+  return successResponse(200, wallet, "mainnet wallet created");
   } catch(error){
     console.error('error -> ', logStruct('createBTCMain', error))
     return errorResponse(error.status, error.message);
   }
   }
 
-router.post('/main', function(req, res, next) {
-    const {username, passphrase} = req.body
-    
-    const wallet =  createBTCMain(username, passphrase);
-    return res.status(wallet.status).send(wallet.data);
+router.post('/main', validateToken, [
+  check('wallet_id', 'Wallet id is required').not().isEmpty(),
+  check('passphrase', 'Please include a passphrase').not().isEmpty(),
+  check('username', 'username is required').not().isEmpty()
+], async(req, res, next) => {
+    const data =  createBTCMain(req.body);
+    const token = req.token;
+    const response = await createWalletServer(data, token);
+
+    return res.status(response.status).send(response.data);
 })
 
 const  createTestBTC = function(email, passphrase){
@@ -201,7 +249,7 @@ const  createTestBTC = function(email, passphrase){
   }
   }
 
-  router.post('/test', function(req, res, next) {
+  router.post('/test', validateToken, function(req, res, next) {
     const {username, passphrase} = req.body 
     const wallet =  createTestBTC(username, passphrase);
     return res.status(wallet.status).send(wallet.data);
@@ -253,7 +301,7 @@ const  importWallet = function(email, mnemonic, passphrase){
   }
   }
 
-  router.post('/import', function(req, res, next) {
+  router.post('/import', validateToken, function(req, res, next) {
     const {username, mnemonic, passphrase} = req.body
     
     const wallet =  importWallet(username, mnemonic, passphrase);
@@ -306,7 +354,7 @@ const  importWallet = function(email, mnemonic, passphrase){
       }
       }
 
-      router.post('/main/import', function(req, res, next) {
+      router.post('/main/import', validateToken, function(req, res, next) {
         const {username, mnemonic, passphrase} = req.body
         
         const wallet =  importWalletMain(username, mnemonic, passphrase);
@@ -323,7 +371,7 @@ const  importWallet = function(email, mnemonic, passphrase){
      }
     }
 
-    router.post('/receive', function(req, res, next) {
+    router.post('/receive', validateToken, function(req, res, next) {
       const {index, xPub} = req.body
       const response =  getReceiveAddress(index, xPub);
       return res.status(response.status).send(response.data)
@@ -339,7 +387,7 @@ const  importWallet = function(email, mnemonic, passphrase){
      }
     } 
 
-    router.post('/main/receive', function(req, res, next) {
+    router.post('/main/receive', validateToken, function(req, res, next) {
       const {index, pass, key} = req.body
       const response =  getReceiveAddressMain(index, pass, key);
       return res.status(response.status).send(response.data)
@@ -355,7 +403,7 @@ const  importWallet = function(email, mnemonic, passphrase){
      }
     }
 
-    router.post('/receivep', function(req, res, next) {
+    router.post('/receivep', validateToken, function(req, res, next) {
       const {index, xPub} = req.body
       const response =  getReceiveAddressP(index, xPub);
       return res.status(response.status).send(response.data)
@@ -371,7 +419,7 @@ const  importWallet = function(email, mnemonic, passphrase){
      }
     }
   
-     router.post('/getWIF', function(req, res, next) {
+     router.post('/getWIF', validateToken, function(req, res, next) {
       const {index, pass, key} = req.body
       const response =  getCurrentWif(index, pass, key);
       return res.status(response.status).send(response.data)
@@ -387,7 +435,7 @@ const  importWallet = function(email, mnemonic, passphrase){
      }
     }
     
-    router.post('/main/getWIF', function(req, res, next) {
+    router.post('/main/getWIF', validateToken, function(req, res, next) {
       const {index, pass, key} = req.body
       const response =  getCurrentWifMain(index, pass, key);
       return res.status(response.status).send(response.data)
@@ -403,7 +451,7 @@ const  importWallet = function(email, mnemonic, passphrase){
      }
     }
 
-    router.post('/getWIFP', function(req, res, next) {
+    router.post('/getWIFP', validateToken, function(req, res, next) {
       const {index, pass, key} = req.body
       const response =  getCurrentWifP(index, pass, key);
       return res.status(response.status).send(response.data)
@@ -411,4 +459,10 @@ const  importWallet = function(email, mnemonic, passphrase){
 
 
 
-module.exports = router;
+module.exports = {
+  router,
+  createBTCTest,
+  createBTCMain,
+  importWallet,
+  importWalletMain
+}

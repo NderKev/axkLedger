@@ -11,15 +11,15 @@ const app = require('./app');
 
 app.set('port', port);
 
-const server = http.createServer(app);
+const blockchain = http.createServer(app);
 
-server.listen(port);
+blockchain.listen(port);
 
-server.on('error', (error) => {
+blockchain.on('error', (error) => {
   console.error('error found', error);
 });
 
-server.on('listening', () => {
-  console.log('Server running at :', port);
+blockchain.on('listening', () => {
+  console.log('Blockchain Server running at :', port);
 });
 
