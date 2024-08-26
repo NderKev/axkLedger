@@ -13,9 +13,9 @@ const validateToken = (req, res, next) => {
         res.status(401).json({ msg: 'Unauthorized request!' });
         console.error(err);
       } else {
-        req.user = decoded.user;
-        req.body.wallet_id = decoded.wallet_id;
-        req.body.token = token;
+        req.user = decoded.data;
+        //req.wallet_id = decoded.data.wallet_id;
+        //req.token = token;
         next();
       }
     });

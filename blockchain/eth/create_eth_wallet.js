@@ -16,6 +16,7 @@ const hdPath =  require('./libs/path');
 const { hdkey } = require('@ethereumjs/wallet')
 //const autogenerate = require("./autogenerate");
 const provider = require('./libs/provider');
+const userModel = require('../../server/psql/models/users');
 const walletModel = require('../../server/psql/models/wallet');
 const { check, validationResult } = require('express-validator');
 const {validateToken} = require('../../server/psql/middleware/auth');
@@ -35,31 +36,42 @@ const logStruct = (func, error) => {
     }
     try {
     //const network = bitcoin.networks.testnet; // if we are using (testnet) then  we use networks.testnet 
-  
-    
+    const userExists = await userModel.checkUserExists(req.user.wallet_id);
+    if (!userExists && !userExists.length) {
+      return res.status(403).json({ msg : 'user doesnt exist' });
+    }
+    const walletExists = await walletModel.checkWallet(req.user.wallet_id);
+    if (!walletExists && !walletExists.length) {
+        return res.status(403).json({ msg : 'walletNotExists' });
+      }
+
+    if (req.body.wallet_id !== req.user.wallet_id) {
+      return res.status(403).json({ msg : 'user wallet id mismatch' });
+    }
+
     const path =`m/49'/1'/0'/0`; // we use  `m/49'/1'/0'/0` for testnet network
     const hdPath =  require('./libs/path');
     const wallet = {};
     
     //let mnemonic = bip39.generateMnemonic()
-    let comb = pass + user;
-    let _passphrase = walletModel.getWallet(data.wallet_id)
-    const matchPwd = bcrypt.compareSync(String(comb), encrypted);
+    let comb = req.body.passphrase + req.user.user;
+    let _passphrase = await walletModel.getWallet(req.body.wallet_id);
+    const matchPwd = bcrypt.compareSync(String(comb), _passphrase[0].passphrase);
        //validTx.passphrase == cryptPwd ? true : false;
        if (!matchPwd) {
          return errorResponse(401,"passphrase_wrong", {message : "wrongPassphrase"});
        }
 
-    let kystr = CryptoJS.AES.decrypt(mnemonic, pinHash(comb));
+    let kystr = CryptoJS.AES.decrypt(_passphrase[0].mnemonic, pinHash(comb));
     const _mnemonic = kystr.toString(CryptoJS.enc.Utf8); 
     const wallet_eth = hdkey.EthereumHDKey.fromMnemonic(_mnemonic, pinHash(comb));
     console.log(wallet_eth.getWallet().getAddressString()) 
     const eth_address = wallet_eth.getWallet().getAddressString();
   
-    wallet.wallet_id = wallet_id;
+    wallet.wallet_id = req.body.wallet_id;
     wallet.mnemonic = CryptoJS.AES.encrypt(_mnemonic, pinHash(comb)).toString();
-    wallet.username = user;
-    wallet.passphrase = bcrypt.hashSync(String(comb), saltRounds);
+    wallet.username = req.user.user;
+    //wallet.passphrase = bcrypt.hashSync(String(comb), saltRounds);
     //wallet.wif = cryptKey;
     wallet.index = 0;
     wallet.address = eth_address;
@@ -71,10 +83,17 @@ const logStruct = (func, error) => {
      - Mnemonic : ${_mnemonic}
          
     `)
-  
+
+    
+    const evmExists = await walletModel.checkEVM({wallet_id : req.user.wallet_id, address : wallet.address});
+    if (evmExists && evmExists.length) {
+        return res.status(403).json({ msg : 'evmExists' });
+      }
+    
+    await walletModel.createEVM({wallet_id : wallet.wallet_id, address : wallet.address, index : wallet.index});
+    await walletModel.cryptoBalance({wallet_id : wallet.wallet_id, crypto : "eth", address : wallet.address});
    
-   
-    return successResponse(201,wallet, 'walletCreated');
+    return successResponse(201,wallet, 'evmWalletCreated');
     } catch(error){
       console.error('error -> ', logStruct('createETHTestCr', error))
       return errorResponse(error.status, error.message);
@@ -82,10 +101,14 @@ const logStruct = (func, error) => {
     }
 
 
-    router.post('/create/wallet',  async(req, res, next) => {
+    router.post('/create/wallet', validateToken, [
+      check('wallet_id', 'Wallet id is required').not().isEmpty(),
+      check('passphrase', 'Please include a passphrase').not().isEmpty(),
+      check('username', 'Username is required').not().isEmpty()
+    ],  async(req, res, next) => {
         console.log(req.body);
-        const { username, wallet_id, mnemonic, passphrase, encrypted} = req.body
-        const wallet = await createETHTestCr(username, wallet_id, mnemonic, passphrase, encrypted);
+        //const { username, wallet_id, mnemonic, passphrase, encrypted} = req.body
+        const wallet = await createETHTestCr(req, res);
       
         return res.status(wallet.status).send(wallet.data);
     });
@@ -117,11 +140,18 @@ const logStruct = (func, error) => {
       }
       
       }
-    const calculateEthPrices = async (data) => {
+    const calculateEthPrices = async (req, res) => {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+      }
       try {
+        if (req.body.wallet_id !== req.user.wallet_id) {
+          return res.status(403).json({ msg : 'user wallet id mismatch' });
+        }
          const httpProvider = new Web3.providers.HttpProvider(provider.sepolia);
          const web3 = new Web3(httpProvider);
-         const bal_eth = await web3.eth.getBalance(data.address);
+         const bal_eth = await web3.eth.getBalance(req.body.address);
          console.log(bal_eth);
          //bal_eth 
          let bal_eth_wei = Number(bal_eth);
@@ -130,9 +160,9 @@ const logStruct = (func, error) => {
          let bal_wei = bal_eth_wei * Math.pow(10, -18);
          console.log(bal_wei);
          let bal = {}
-         bal.wallet_id = data.wallet_id;
+         bal.wallet_id = req.body.wallet_id;
          bal.crypto = "eth";
-         bal.address = data.address;
+         bal.address = req.body.address;
          bal.balance = bal_wei;
          let getPrice = await checkEthPriceUSD();
          let eth_prc = getPrice.data;
@@ -157,6 +187,7 @@ const logStruct = (func, error) => {
          //tF = tF.toFixed(2);
         // console.log(tF);
          bal.usd = sum;
+         await walletModel.updateBalance(bal);
        
         return successResponse(200, bal, {wallet_id: bal.wallet_id, eth_balance : bal.balance, usd_balance : bal.usd})
       } catch (error) {
@@ -166,15 +197,23 @@ const logStruct = (func, error) => {
      }
 
 
-     router.post('/get/balance', async(req, res, next) => {
+     router.post('/get/balance', validateToken, [
+      check('wallet_id', 'Wallet id is required').not().isEmpty(),
+      check('address', 'Please include an address').not().isEmpty()
+      //check('user', 'Username is required').not().isEmpty()
+    ], async(req, res, next) => {
 
-      const respBal = await calculateEthPrices(req.body); 
+      const respBal = await calculateEthPrices(req, res); 
 
       return res.status(respBal.status).send(respBal.data)
     });
 
-    router.get('/get/addr/balance', async (req, res, next) => {
-      const response = await calculateEthPrices(req.body);
+    router.get('/get/addr/balance', validateToken, [
+      check('wallet_id', 'Wallet id is required').not().isEmpty(),
+      check('address', 'Please include an address').not().isEmpty()
+      //check('user', 'Username is required').not().isEmpty()
+    ], async (req, res, next) => {
+      const response = await calculateEthPrices(req, res);
       return res.status(response.status).send(response)
     });
 

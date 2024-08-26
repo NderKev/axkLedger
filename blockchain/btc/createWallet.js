@@ -12,6 +12,7 @@ const bcrypt = require('bcryptjs');
 const saltRounds = 10;
 const autogenerate = require("./autogenerate");
 const walletModel = require('../../server/psql/models/wallet');
+const userModel = require('../../server/psql/models/users');
 const { check, validationResult } = require('express-validator');
 const {validateToken} = require('../../server/psql/middleware/auth');
 //const createWalletTestUrl = "localhost:8000/axkledger/v1/api/wallet/wallet";
@@ -33,8 +34,18 @@ if (!errors.isEmpty()) {
 try {
 const network = bitcoin.networks.testnet; // if we are using (testnet) then  we use networks.testnet 
 //const validInput = validateAuth(data);
+if (req.body.wallet_id !== req.user.wallet_id) {
+  return res.status(403).json({ msg : 'user wallet id mismatch' });
+}
+const userExists = await userModel.checkUserExists(req.user.wallet_id);
+if (!userExists && !userExists.length) {
+  return res.status(403).json({ msg : 'user doesnt exist' });
+}
 
-
+const walletExists = await walletModel.checkWallet(req.user.wallet_id);
+if (walletExists && walletExists.length) {
+    return res.status(403).json({ msg : 'walletExists' });
+  }
 let _user = req.body.username;
 let _pass = req.body.passphrase;
 let _walletid = req.body.wallet_id;
@@ -81,9 +92,11 @@ Wallet generated:
      
 `)
 
+
 await walletModel.createWallet(wallet);
 await walletModel.createBTC(wallet);
-await wallet.createWif({wallet_id : wallet.wallet_id, wif : wallet.wif, address : wallet.address});
+await walletModel.createWif({wallet_id : wallet.wallet_id, wif : wallet.wif, address : wallet.address});
+await walletModel.cryptoBalance({wallet_id : wallet.wallet_id, crypto : "btc", address : wallet.address});
 return successResponse(201, wallet, 'walletCreated');
 
 } catch(error){
@@ -117,7 +130,7 @@ router.post('/testnet', validateToken, [
   check('username', 'Username is required').not().isEmpty()
 ], async(req, res, next) => {
 
-const wallet =  createBTCTest(req, res);
+const wallet =  await createBTCTest(req, res);
 //const token = req.body.token;
 
 //console.log(token + " : " + data.data);
@@ -459,10 +472,4 @@ const  importWallet = function(email, mnemonic, passphrase){
 
 
 
-module.exports = {
-  router,
-  createBTCTest,
-  createBTCMain,
-  importWallet,
-  importWalletMain
-}
+module.exports = router;

@@ -31,6 +31,18 @@ router.post(
   walletController.createEVM
 );
 
+router.post(
+  '/pass',
+  [
+
+    check('wallet_id', 'Please include a wallet id').not().isEmpty(),
+    check('passphrase', 'Please include a passphrase').not().isEmpty()
+  
+  ],
+  validateToken,
+  walletController.updateWalletPassphrase
+);
+
 router.get(
   '/wallet',
   [

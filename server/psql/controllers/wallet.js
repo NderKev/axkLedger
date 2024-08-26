@@ -19,13 +19,16 @@ exports.createWallet = async (req, res) => {
         if (!userExists && !userExists.length) {
           return res.status(403).json({ msg : 'user doesnt exist' });
         }
+        if (wallet_id !== req.user.wallet_id) {
+          return res.status(403).json({ msg : 'user wallet id mismatch' });
+        }
         const walletExists = await wallet.checkWallet(wallet_id);
         if (walletExists && walletExists.length) {
             return res.status(403).json({ msg : 'walletExists' });
           }
-        const salt = await bcrypt.genSalt(10);
-        let _passphrase = await bcrypt.hash(passphrase, salt);
-        await wallet.createWallet({wallet_id : wallet_id, mnemonic : mnemonic, passphrase : _passphrase});
+        //const salt = await bcrypt.genSalt(10);
+        //let _passphrase = await bcrypt.hash(passphrase, salt);
+        await wallet.createWallet({wallet_id : wallet_id, mnemonic : mnemonic, passphrase : passphrase});
         await wallet.createBTC({wallet_id : wallet_id, wif : wif, address : address, xpub : xpub, xpriv :xpriv});
         await wallet.createWif({wallet_id : wallet_id, wif : wif, address : address});
         return res.json({wallet_id : wallet_id, btc : address, msg : 'crypto and btc wallet created'});
@@ -41,6 +44,7 @@ exports.createEVM = async (req, res) => {
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
+    
     const validAddress = isAddress(req.body.address);
     if (!validAddress || validAddress === 'null'|| typeof validAddress === 'undefined'){
      return res.status(401).json({ msg: 'Invalid address!' });
@@ -51,6 +55,9 @@ exports.createEVM = async (req, res) => {
         const userExists = await users.checkUserExists(wallet_id);
         if (!userExists && !userExists.length) {
           return res.status(403).json({ msg : 'user doesnt exist' });
+        }
+        if (wallet_id !== req.user.wallet_id) {
+          return res.status(403).json({ msg : 'user wallet id mismatch' });
         }
         const walletExists = await wallet.checkWallet(wallet_id);
         if (!walletExists && !walletExists.length) {
@@ -82,6 +89,9 @@ exports.createXRP = async (req, res) => {
         if (!userExists && !userExists.length) {
           return res.status(403).json({ msg : 'user doesnt exist' });
         }
+        if (wallet_id !== req.user.wallet_id) {
+          return res.status(403).json({ msg : 'user wallet id mismatch' });
+        }
         const walletExists = await wallet.checkWallet(wallet_id);
         if (!walletExists && !walletExists.length) {
             return res.status(403).json({ msg : 'walletNotExists' });
@@ -111,6 +121,9 @@ exports.createWif = async (req, res) => {
         const userExists = await users.checkUserExists(wallet_id);
         if (!userExists && !userExists.length) {
           return res.status(403).json({ msg : 'user doesnt exist' });
+        }
+        if (wallet_id !== req.user.wallet_id) {
+          return res.status(403).json({ msg : 'user wallet id mismatch' });
         }
         const walletExists = await wallet.checkWallet(wallet_id);
         if (!walletExists && !walletExists.length) {
@@ -142,6 +155,9 @@ exports.cryptoBalance = async (req, res) => {
         if (!userExists && !userExists.length) {
           return res.status(403).json({ msg : 'user doesnt exist' });
         }
+        if (wallet_id !== req.user.wallet_id) {
+          return res.status(403).json({ msg : 'user wallet id mismatch' });
+        }
         const walletExists = await wallet.checkWallet(wallet_id);
         if (!walletExists && !walletExists.length) {
             return res.status(403).json({ msg : 'walletNotExists' });
@@ -159,6 +175,39 @@ exports.cryptoBalance = async (req, res) => {
     }
 }
 
+exports.updateWalletPassphrase = async (req, res) => {
+  const errors = validationResult(req);
+
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  const { wallet_id, passphrase} = req.body;
+  try {
+      const userExists = await users.checkUserExists(wallet_id);
+      if (!userExists && !userExists.length) {
+        return res.status(403).json({ msg : 'user doesnt exist' });
+      }
+      if (wallet_id !== req.user.wallet_id) {
+        return res.status(403).json({ msg : 'user wallet id mismatch' });
+      }
+      const walletExists = await wallet.checkWallet(wallet_id);
+      if (!walletExists && !walletExists.length) {
+          return res.status(403).json({ msg : 'walletNotExists' });
+        }
+      console.log("username" + req.user.user);
+      let str = passphrase + req.user.user;
+      let saltRounds = 10;
+      let _passphrase = bcrypt.hashSync(String(str), saltRounds);
+      
+      await wallet.updateWalletPassphrase({wallet_id : wallet_id, passphrase : _passphrase });
+      return res.json({wallet_id : wallet_id, msg : 'crypto wallet passphrase updated'});
+  }catch (error) {
+      console.error(error.message);
+      return res.status(500).json({ msg: 'Internal server error update wallet passphrase' });
+  }
+}
+
 exports.updateBalance = async (req, res) => {
     const errors = validationResult(req);
   
@@ -171,6 +220,9 @@ exports.updateBalance = async (req, res) => {
         const userExists = await users.checkUserExists(wallet_id);
         if (!userExists && !userExists.length) {
           return res.status(403).json({ msg : 'user doesnt exist' });
+        }
+        if (wallet_id !== req.user.wallet_id) {
+          return res.status(403).json({ msg : 'user wallet id mismatch' });
         }
         const walletExists = await wallet.checkWallet(wallet_id);
         if (!walletExists && !walletExists.length) {
@@ -202,6 +254,9 @@ exports.updateBTC = async (req, res) => {
         if (!userExists && !userExists.length) {
           return res.status(403).json({ msg : 'user doesnt exist' });
         }
+        if (wallet_id !== req.user.wallet_id) {
+          return res.status(403).json({ msg : 'user wallet id mismatch' });
+        }
         const walletExists = await wallet.checkWallet(wallet_id);
         if (!walletExists && !walletExists.length) {
             return res.status(403).json({ msg : 'walletNotExists' });
@@ -226,6 +281,9 @@ exports.updateEVMIndex = async (req, res) => {
       if (!isExists && !isExists.length) {
           return res.status(403).json({ msg : 'evmIndexNotExists' });
         }
+      if (wallet_id !== req.user.wallet_id) {
+          return res.status(403).json({ msg : 'user wallet id mismatch' });
+        }
       const idx = await wallet.updateEVMIndex({wallet_id : wallet_id, address : address, index : index});
       return res.status(200).json(idx);
     } catch (err) {
@@ -241,6 +299,9 @@ exports.getBalance = async (req, res) => {
       if (!balExists && !balExists.length) {
           return res.status(403).json({ msg : 'balanceNotExists' });
         }
+      if (wallet_id !== req.user.wallet_id) {
+          return res.status(403).json({ msg : 'user wallet id mismatch' });
+        }
       const balance = await wallet.getBalance({wallet_id : wallet_id, crypto : crypto, address : address});
       return res.status(200).json(balance);
     } catch (err) {
@@ -251,7 +312,7 @@ exports.getBalance = async (req, res) => {
 
 exports.getWallet = async (req, res) => {
     try {
-      let wallet_id = req.body.wallet_id;
+      let wallet_id = req.user.wallet_id;
       const walletExists = await wallet.checkWallet(wallet_id);
         if (!walletExists && !walletExists.length) {
             return res.status(403).json({ msg : 'walletNotExists' });
@@ -266,7 +327,7 @@ exports.getWallet = async (req, res) => {
 
 exports.getBTC = async (req, res) => {
     try {
-      let wallet_id = req.body.wallet_id;
+      let wallet_id = req.user.wallet_id;
       const btcExists = await wallet.checkBTC(wallet_id);
       if (!btcExists && !btcExists.length) {
           return res.status(403).json({ msg : 'btcNotExists' });
@@ -281,7 +342,7 @@ exports.getBTC = async (req, res) => {
 
 exports.getEVM = async (req, res) => {
     try {
-      let wallet_id = req.body.wallet_id;
+      let wallet_id = req.user.wallet_id;
       const evmExists = await wallet.isEVM(wallet_id);
       if (!evmExists && !evmExists.length) {
           return res.status(403).json({ msg : 'evmNotExists' });
@@ -296,7 +357,7 @@ exports.getEVM = async (req, res) => {
 
 exports.getXRP = async (req, res) => {
     try {
-      let wallet_id = req.body.wallet_id;
+      let wallet_id = req.user.wallet_id;
       const xrpExists = await wallet.isXRP(wallet_id);
       if (!xrpExists && !xrpExists.length) {
           return res.status(403).json({ msg : 'xrpNotExists' });
@@ -311,7 +372,7 @@ exports.getXRP = async (req, res) => {
 
 exports.getWifs = async (req, res) => {
     try {
-      let wallet_id = req.body.wallet_id;
+      let wallet_id = req.user.wallet_id;
       const wifExists = await wallet.checkWif(wallet_id);
       if (!wifExists && !wifExists.length) {
           return res.status(403).json({ msg : 'wifsNotExists' });

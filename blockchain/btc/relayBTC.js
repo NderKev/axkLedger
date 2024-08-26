@@ -3,7 +3,7 @@
    const bip32 = require('bip32')
    const bip39 = require('bip39')
    const axios = require('axios');
-   require('dotenv').config();
+   
    const moment = require('moment');
    const express = require('express');
    const autogenerate = require("./autogenerate");
@@ -19,6 +19,7 @@
    const { check, validationResult } = require('express-validator');
    const { validateToken } = require('../../server/psql/middleware/auth');
    const walletModel = require('../../server/psql/models/wallet');
+   require('dotenv').config({ path: '../../.env'});
    const logStruct = (func, error) => {
     return {'func': func, 'file': 'relayBTC', error}
   }
@@ -333,7 +334,9 @@
         return res.status(400).json({ errors: errors.array() });
      }
       try {
-       
+        if (req.body.wallet_id !== req.user.wallet_id) {
+          return res.status(403).json({ msg : 'user wallet id mismatch' });
+        }
        //sendFrom, keystr, sendTo, amount,  indexer, keyP, passphrase
        const TESTNET = bitcoin.networks.testnet;
        const saltRounds = 10;
@@ -341,9 +344,9 @@
        let comb = req.body.passphrase + req.body.username;
        const passphrase = bcrypt.hashSync(String(comb), saltRounds);
        //const matchPwd = bcrypt.compareSync(String(comb), reqData.encrypted);
-       const _passphrase = walletModel.getWallet(req.body.wallet_id);
-       const _btc = walletModel.getBTC(req.body.wallet_id);
-       const matchPwd = bcrypt.compare(passphrase, _passphrase[0].passphrase);
+       const _passphrase = await walletModel.getWallet(req.body.wallet_id);
+       const _btc = await walletModel.getBTC(req.body.wallet_id);
+       const matchPwd = bcrypt.compareSync(String(comb), _passphrase[0].passphrase);
        //validTx.passphrase == cryptPwd ? true : false;
        if (!matchPwd) {
          return errorResponse(401, "passphrase_wrong", {message : "wrongPassphrase"});
@@ -355,10 +358,12 @@
        if (!correct) {
         return errorResponse(401 , "pin_wrong", {message : "wrongPin"});
       } **/
-
+       let keyWif = CryptoJS.AES.decrypt(_btc[0].wif, pinHash(comb));
+       const kyWif = keyWif.toString(CryptoJS.enc.Utf8);
        let keystrl = CryptoJS.AES.decrypt(_passphrase[0].mnemonic, pinHash(comb));
        const keystore = keystrl.toString(CryptoJS.enc.Utf8);
-       const keyPair = bitcoin.ECPair.fromWIF(keystore, TESTNET);
+
+       const keyPair = bitcoin.ECPair.fromWIF(kyWif, TESTNET);
        
        const p2pkh = bitcoin.payments.p2pkh({
           pubkey: keyPair.publicKey,
@@ -393,7 +398,7 @@
        const utxos = txref.data.txrefs;
        console.log("UTXOS : " + utxos[0].tx_hash);
         console.log(req.body.amount)
-        l
+
         let withdrawAmount =  parseInt(req.body.amount * 100000000);
         console.log(withdrawAmount);
         //fetch current fee here
@@ -435,33 +440,42 @@
         const tx_hash = raw_tx.getId();
         //const respPush = await pushRawTransaction(rawTx, token);
         //console.log(respPush.data);
-        const txObj = {};
+        let txObj = {}, sentObj = {};
+        sentObj.wallet_id = req.body.wallet_id;
+        sentObj.from = _btc[0].address;
+        sentObj.amount = req.body.amount;
+        sentObj.to = req.body.to;
+        sentObj.index = destination.index;
+        sentObj.wif = CryptoJS.AES.encrypt(destination.wif, pinHash(comb)).toString();
+        sentObj.address = destination.address;
+        sentObj.rawTx = rawTx;
+        sentObj.txHash = tx_hash;
         txObj.wallet_id = req.body.wallet_id;
-        txObj.from = _btc[0].address;
-        txObj.amount = req.body.amount;
-        txObj.to = req.body.to;
-        txObj.index = destination.index;
-        txObj.address = destination.address;
-        txObj.wif = CryptoJS.AES.encrypt(destination.wif, pinHash(comb)).toString();
-        txObj.value = withdrawAmount;
+        txObj.address = _btc[0].address;
+        txObj.tx_hash = tx_hash;
         txObj.mode = 'btc';
         txObj.type = 'credit';
+        txObj.to = req.body.to;
+        txObj.value = withdrawAmount;
         let getBtcPrice = await checkBtcPrice();
         let btc_price = getBtcPrice.data;
         console.log(btc_price);
         let _pr = btc_price.toFixed(2);
         console.log(_pr);
-        let _usd = withdrawAmount * _pr;
+        let _usd = (withdrawAmount/100000000) * _pr;
         let _sum = _usd.toFixed(2);
         console.log(_sum);
         txObj.fiat = _sum;
+        let _change = (change/100000000) * _pr;
+        let change_ = _change.toFixed(2);
+        console.log(change_);
         //txObj.timestamp = moment().format('YYYY-MM-DD HH:mm:ss');
-        txObj.rawTx = rawTx;
-        txObj.txHash = tx_hash;
+        
+        
         console.log(tx_hash);
         console.log(rawTx);
         
-        await walletModel.btcSent(txObj);
+        await walletModel.btcSentTxs(sentObj);
 
        /** if (_btc[0].index > 0 && _btc[0].index !== 'null'){
           let rec_wif = {
@@ -472,9 +486,16 @@
           }
         await walletModel.createWif(rec_wif);
         } **/
-        
+        //txObj.address = from;
         await transactions.createTransaction(txObj);
-        return successResponse(201, txObj, {txHash : tx_hash}, 'btc sent');
+        //txObj.address = from;
+        txObj.type = 'debit';
+        txObj.tx_hash = _btc[0].address;
+        txObj.to = destination.address;
+        txObj.value = change;
+        txObj.fiat = change_;
+        await transactions.createTransaction(txObj);
+        return successResponse(201, sentObj, {txHash : tx_hash}, 'btc sent');
         //implement sendRawTX
         
        } catch (error) {
@@ -765,16 +786,34 @@ const psbtTransactionBuildMain = async(sendFrom, keystore, key, sendTo, amount, 
   }
   }
 
- const calculatePrices = async (data) => {
+ const calculatePrices = async (req, res) => {
+  const errors = validationResult(req);
+  
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+     }
   try {
-     const response = await getTransactions(data.address, token);
+    if (req.body.wallet_id !== req.user.wallet_id) {
+      return res.status(403).json({ msg : 'user wallet id mismatch' });
+    }
+     const response = await getTransactions(req.body.address, token);
+     let bal = {};
+     bal.wallet_id = req.body.wallet_id;
+     bal.crypto = "btc";
+     let unconfirmed = response.data.unconfirmed_balance;
+     if (unconfirmed && unconfirmed > 0 ){
+      let uncf = (unconfirmed/100000000);
+      console.log(uncf);
+      bal.status = "pending";
+      bal.address = req.body.address;
+      bal.balance = uncf;
+      bal.usd = 0;
+     }
+     else {
      let final = response.data.final_balance;
+     if (final && final > 0 ){
      let fn = (final/100000000);
      console.log(fn);
-     let bal = {}
-     bal.wallet_id = data.wallet_id;
-     bal.crypto = "btc"
-     bal.address = data.address;
      bal.balance = fn;
      let getPrice = await checkBtcPrice();
      let btc_prc = getPrice.data;
@@ -784,11 +823,10 @@ const psbtTransactionBuildMain = async(sendFrom, keystore, key, sendTo, amount, 
      let usd = fn * pr;
      let sum = usd.toFixed(2);
      console.log(sum);
-     //let tF = sum  * 110;
-     //tF = tF.toFixed(2);
-     //console.log(tF);
      bal.usd = sum;
-   
+     }
+    }
+     await walletModel.updateBalance(bal);
     return successResponse(200, bal, {address : bal.address, btc_balance : bal.balance, usd_balance : bal.usd})
   } catch (error) {
     console.error('error -> ', logStruct('calculatePrices', error))
@@ -798,12 +836,15 @@ const psbtTransactionBuildMain = async(sendFrom, keystore, key, sendTo, amount, 
 
 
   
- router.post('/test/balance',  async(req, res, next) => {
-     const respBal = await calculatePrices(req.body);
+ router.post('/test/balance', validateToken, [
+  check('wallet_id', 'Wallet id is required').not().isEmpty(),
+  check('address', 'Please include an address').not().isEmpty()
+], async(req, res, next) => {
+     const respBal = await calculatePrices(req, res);
      return res.status(respBal.status).send(respBal.data)
  })
 
- router.post('/main/balance', async(req, res, next) => {
+ router.post('/main/balance', validateToken, async(req, res, next) => {
    
   const address = req.body.address;
 
@@ -817,7 +858,7 @@ const psbtTransactionBuildMain = async(sendFrom, keystore, key, sendTo, amount, 
 
 })
 
- router.post('/test/sendBTC', async(req, res, next) => {
+ router.post('/test/sendBTC', validateToken, async(req, res, next) => {
   const {from, keystore, to, amount, index, key, passphrase} = req.body
   const response = await psbtTransactionBuilder(from, keystore, to, amount, index, key, passphrase);
   return res.status(response.status).send(response.data)
@@ -826,48 +867,56 @@ const psbtTransactionBuildMain = async(sendFrom, keystore, key, sendTo, amount, 
  router.post('/test/sendBTC/cr', validateToken, [
   check('wallet_id', 'Wallet id is required').not().isEmpty(),
   check('amount', 'Please include a amount').not().isEmpty(),
-  check('to', 'Please include a destination').not().isEmpty()
+  check('username', 'Please include a username').not().isEmpty(),
+  check('passphrase', 'Please include a passphrase').not().isEmpty(),
 ], async(req, res, next) => {
   req.body.to = process.env.ESCROW_ACCOUNT_BTC;//"mnxW3nw6AVfAXE55vsoMkyGEGmB9KnWm4N";
   //req.body.passphrase = req.body.pin;
-  const response = await psbtTransactionBuilderCr();
+  const response = await psbtTransactionBuilderCr(req, res);
   
   return res.status(response.status).send(response.data)
  });
 
- router.post('/main/sendBTC', async(req, res, next) => {
+ router.post('/main/sendBTC', validateToken, async(req, res, next) => {
   const {from, keystore,  key,  to, amount, index, xPub} = req.body
   const response = await psbtTransactionProd(from, keystore, key, to, amount, index, xPub);
   return res.status(response.status).send(response.data)
  });
  
- router.post('/main/send', async(req, res, next) => {
+ router.post('/main/send', validateToken, async(req, res, next) => {
   const {from, keystore,  key,  to, amount, index, passphrase} = req.body
   const response = await psbtTransactionBuildMain(from, keystore, key, to, amount, index, passphrase);
   return res.status(response.status).send(response.data)
  });
 
 
- router.post('/test/send', async(req, res, next) => {
+ router.post('/test/send', validateToken, async(req, res, next) => {
   const {from, keystore, to, amount, index, xPub} = req.body
   const response = await psbtTransactionBuild(from, keystore, to, amount, index, xPub);
   return res.status(response.status).send(response.data)
 });
 
- router.post('/test/decode', validateToken, async(req, res, next) => {
+ router.post('/test/decode/cr', validateToken, async(req, res, next) => {
+  let walletid = await walletModel.fetchSentPending({wallet_id : req.user.wallet_id, rawTx : req.body.tx});
+  if (!walletid && !walletid.length) {
+    return res.status(403).json({ msg : 'transcationNotExists' });
+  }
+  if (walletid[0].wallet_id !== req.user.wallet_id) {
+    return res.status(403).json({ msg : 'user wallet id mismatch' });
+  }
   const tx = JSON.stringify(req.body);
   const response = await decodeRawTransaction(tx, token);
-  await walletModel.updateBtcSent({wallet_id : req.body.wallet_id, rawTx : req.body.tx, status : "decoded"});
-  return res.status(response.status).send(response.data)
+  await walletModel.updateBtcSent({wallet_id : req.user.wallet_id, rawTx : req.body.tx, status : "decoded"});
+  return res.status(response.status).send(response.data);
 });
 
-router.post('/main/decode', async(req, res, next) => {
+router.post('/main/decode', validateToken, async(req, res, next) => {
   const tx = JSON.stringify(req.body);
   const response = await decodeRawTransactionMain(tx, token);
   return res.status(response.status).send(response.data)
 });
 
-router.post('/test/push', async(req, res, next) => {
+router.post('/test/push', validateToken, async(req, res, next) => {
   const tx = JSON.stringify(req.body);
   const response = await pushRawTransaction(tx, token);
   return res.status(response.status).send(response.data)
@@ -875,12 +924,19 @@ router.post('/test/push', async(req, res, next) => {
 
 
 router.post('/test/push/cr', validateToken, async(req, res, next) => {
+  let walletid = await walletModel.fetchSentDecoded({wallet_id : req.user.wallet_id, rawTx : req.body.tx});
+  if (!walletid && !walletid.length) {
+    return res.status(403).json({ msg : 'transcationNotExists' });
+  }
+  if (walletid[0].wallet_id !== req.user.wallet_id) {
+    return res.status(403).json({ msg : 'user wallet id mismatch' });
+  }
   const tx = JSON.stringify(req.body);
   const response = await pushRawTransactionCr(tx, token);
-  await walletModel.updateBtcSent({wallet_id : req.body.wallet_id, rawTx : req.body.tx, status : "pushed"});
-  let sent_wif = await walletModel.fetchSentBtc({wallet_id : req.body.wallet_id, rawTx : req.body.tx});
+  await walletModel.updateBtcSent({wallet_id : req.user.wallet_id, rawTx : req.body.tx, status : "pushed"});
+  let sent_wif = await walletModel.fetchSentBtc({wallet_id : req.user.wallet_id, rawTx : req.body.tx});
   let rec_wif = {
-    wallet_id : req.body.wallet_id,
+    wallet_id : req.user.wallet_id,
     address : sent_wif[0].address,
     wif : sent_wif[0].wif,
     index : sent_wif[0].index
@@ -892,26 +948,26 @@ router.post('/test/push/cr', validateToken, async(req, res, next) => {
 
 
 
-router.post('/main/pushBTC', async(req, res, next) => {
+router.post('/main/pushBTC', validateToken, async(req, res, next) => {
   const tx = JSON.stringify(req.body);
   const response = await pushRawTransactionMain(tx, token);
   return res.status(response.status).send(response.data)
 });
 
 
-router.post('/test/utxos',  async(req, res, next) => {
+router.post('/test/utxos', validateToken, async(req, res, next) => {
   const address = req.body.address;
   const response = await fetchUnspents(address, token);
   return res.status(response.status).send(response.data);
 });
 
-router.post('/test/data',  async(req, res, next) => {
+router.post('/test/data', validateToken, async(req, res, next) => {
   const hash = req.body.hash;
   const response = await fetchHash(hash, token);
   return res.status(response.status).send(response.data);
 });
 
-router.post('/main/utxos', async(req, res, next) => {
+router.post('/main/utxos', validateToken, async(req, res, next) => {
   const address = req.body.address;
   const response = await fetchUnspentsMain(address, token);
   return res.status(response.status).send(response.data);

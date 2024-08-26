@@ -47,7 +47,7 @@ app.use((req, res, next) => {
     res.status(404).send({
       success : false,
       message : 'notFound',
-      type : 'axkledger BD',
+      type : 'axkledger Blockchain',
       action: req.method+' '+req.originalUrl,
       data : [],
       meta:{}

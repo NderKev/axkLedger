@@ -51,7 +51,10 @@ const generateUniqueId = (length)=> {
       if (role === "admin") {
         return res.status(404).json({ msg : 'forbidden Request' });
       }
+      const checkRole = await users.checkUserRole(role);
+      if (!checkRole || !checkRole.length){
       await users.createUserRole({role : role});
+      }
       await users.createPermission({wallet_id: wallet_id, role_id: role_id});
       const token =  await users.genToken(input);
       await users.createUserToken(token);

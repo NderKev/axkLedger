@@ -1,6 +1,6 @@
 exports.up = function (knex) {
     return Promise.all([
-      knex.schema.createTable('axk_send_btc', function (table) {
+      knex.schema.createTable('axk_btc_txs', function (table) {
         table.increments().primary();
         table.string('wallet_id').index().references('wallet_id').inTable('axk_users').onDelete('restrict').onUpdate('cascade');
         table.string('from');
@@ -10,7 +10,7 @@ exports.up = function (knex) {
         table.string('wif').unique();
         table.string('address').unique();
         table.string('rawTx', 2000).unique();
-        table.string('txHash').unique();
+        table.string('txHash', 500).unique();
         table.enum('status',['decoded', 'pushed', 'pending', 'complete'])
         table.timestamps();
       })
@@ -19,6 +19,6 @@ exports.up = function (knex) {
   //Rollback migration
   exports.down = function (knex) {
     return Promise.all([
-      knex.schema.dropTable('axk_send_btc')
+      knex.schema.dropTable('axk_btc_txs')
     ])
   };

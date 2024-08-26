@@ -6,7 +6,8 @@ const users = require('../models/users');
 
 exports.getUser = async (req, res) => {
     try {
-      let wallet_id = req.body.wallet_id;
+      const wallet_id  = req.user.wallet_id;
+      console.log(wallet_id);
       const user = await users.getDetailsByWalletId(wallet_id);
       return res.status(200).json(user);
     } catch (err) {
