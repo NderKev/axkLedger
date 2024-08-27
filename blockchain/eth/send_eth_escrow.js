@@ -114,10 +114,13 @@ const send_ether_to_escrow = async(req, res) => {
      let keystrl = CryptoJS.AES.decrypt(_passphrase[0].mnemonic , pinHash(comb));
      const keystore = keystrl.toString(CryptoJS.enc.Utf8);
 
-      const newProvider = new Web3.providers.HttpProvider(provider.sepolia, keystore);
-      //web3.setProvider(keystore);
+     const NewProvider = new SignerProvider(provider.sepolia, {
+      signTransaction: keystore.signTransaction.bind(keystore),
+      accounts: (cb) => cb(null,keystore.getAddresses()),
+    });
+     web3.setProvider(NewProvider);
       var sendParams = { from: _evm[0].address , to: process.env.ESCROW_ACCOUNT_ETH, value: ethAmount, gas: gasLimit, gasPrice: gasPrice };
-      let txEth = await newProvider.eth.sendTransaction(sendParams);
+      let txEth = await web3.eth.sendTransaction(sendParams);
       const txObj = {};
       txObj.wallet_id = req.body.wallet_id;
       txObj.address = _evm[0].address;

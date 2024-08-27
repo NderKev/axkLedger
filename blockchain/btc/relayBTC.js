@@ -800,12 +800,12 @@ const psbtTransactionBuildMain = async(sendFrom, keystore, key, sendTo, amount, 
      let bal = {};
      bal.wallet_id = req.body.wallet_id;
      bal.crypto = "btc";
+     bal.address = req.body.address;
      let unconfirmed = response.data.unconfirmed_balance;
      if (unconfirmed && unconfirmed > 0 ){
       let uncf = (unconfirmed/100000000);
       console.log(uncf);
       bal.status = "pending";
-      bal.address = req.body.address;
       bal.balance = uncf;
       bal.usd = 0;
      }
