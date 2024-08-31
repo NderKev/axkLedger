@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
+// https://sepolia-blockscout.lisk.com/address/0x5209258eeb059d30c2a5bce9edabf04986cc9249#code
 pragma solidity ^0.8.24;
 
 import "./ProduceManagement.sol";
 
-contract ProduceOwnership {
+contract ProduceOwnershipV1 {
 
     enum OperationType {UNIT, PRODUCE}
     mapping(bytes32 => address) public currentConsignmentOwner;
@@ -25,7 +26,7 @@ contract ProduceOwnership {
             (farmer, , , ) = pm.consignments(p_hash);
             require(owner == farmer, "Consignment owner mismatch");
             require(currentConsignmentOwner[p_hash] == address(0), "Consignment was already registered");
-            require(currentConsignmentOwner[p_hash] == owner, "Consignment was not made by requester");
+            require(currentConsignmentOwner[p_hash] == msg.sender, "Consignment was not made by requester");
             currentConsignmentOwner[p_hash] = owner;
             emit TransferConsignmentOwnership(p_hash, owner);
             retType = true;
@@ -34,7 +35,7 @@ contract ProduceOwnership {
             (farmer, , , ) = pm.produces(p_hash);
             require(owner == farmer, "Produce owner mismatch");
             require(currentProduceOwner[p_hash] == address(0), "Produce was already registered");
-            require(currentProduceOwner[p_hash] == owner, "Produce was not made by requester");
+            require(currentProduceOwner[p_hash] == msg.sender, "Produce was not made by requester");
             currentProduceOwner[p_hash] = owner;
             emit TransferProduceOwnership(p_hash, owner);
             retType = true;
@@ -47,13 +48,19 @@ contract ProduceOwnership {
       //Check if the element exists and belongs to the user requesting ownership change
         bool resType = false;
         if(op_type == uint(OperationType.UNIT)){
-            require(currentConsignmentOwner[p_hash] == owner, "Consignment is not owned by requester");
+            address farmer;
+            (farmer, , , ) = pm.consignments(p_hash);
+            require(owner == farmer, "Consignment owner mismatch");
+            require(currentConsignmentOwner[p_hash] == msg.sender, "Consignment is not owned by requester");
             currentConsignmentOwner[p_hash] = to;
             emit TransferConsignmentOwnership(p_hash, to);
             resType = true;
 
         } else if (op_type == uint(OperationType.PRODUCE)){
-            require(currentProduceOwner[p_hash] == owner, "Produce is not owned by requester");
+            address farmer;
+            (farmer, , , ) = pm.produces(p_hash);
+            require(owner == farmer, "Produce owner mismatch");
+            require(currentProduceOwner[p_hash] == msg.sender, "Produce is not owned by requester");
             currentProduceOwner[p_hash] = to;
             emit TransferProduceOwnership(p_hash, to);
             //Change consignment ownership too

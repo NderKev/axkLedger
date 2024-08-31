@@ -41,7 +41,8 @@ const axkLiskRoute = require('./lisk/routes/axkLisk');
 app.use('/axkledger/v1/lisk', axkLiskRoute);
 const axkXrpRoute = require('./xrp/wallet');
 app.use('/axkledger/v1/xrp', axkXrpRoute);
-
+const axkScRoute = require('./supply_chain/supplychain');
+app.use('/axkledger/v1/sc', axkScRoute);
 
 app.use((req, res, next) => {
     res.status(404).send({
