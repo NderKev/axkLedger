@@ -211,7 +211,6 @@ const logStruct = (func, error) => {
     router.get('/get/addr/balance', validateToken, [
       check('wallet_id', 'Wallet id is required').not().isEmpty(),
       check('address', 'Please include an address').not().isEmpty()
-      //check('user', 'Username is required').not().isEmpty()
     ], async (req, res, next) => {
       const response = await calculateEthPrices(req, res);
       return res.status(response.status).send(response)

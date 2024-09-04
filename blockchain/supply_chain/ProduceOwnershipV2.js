@@ -10,11 +10,11 @@ const contracts = require("../abi/contracts");
 const moment = require("moment");
 require('dotenv').config({ path: '../../.env'});
 
-const {abi} = require("../abi/ProduceOwnership.json");
+const {abi} = require("../abi/ProduceOwnershipV2.json");
 
-const contractAddress = contracts.ProduceOwnership;
+const contractAddress = contracts.ProduceOwnershipV2;
 
-const ProduceOwnershipContract = new web3.eth.Contract(abi, contractAddress);
+const ProduceOwnershipV2Contract = new web3.eth.Contract(abi, contractAddress);
 
 const privateKey = process.env.LISK_PRIV_KEY;
 const fromAddress = process.env.SUPPLY_CHAIN_ADDRESS;
@@ -51,7 +51,7 @@ async function sendTransaction(tx, fromAddress, privateKey) {
 
 // Function to register a farmer produce consignment 
 async function addOwnership(data) { 
-    const tx = ProduceOwnershipContract.methods.addOwnership(data.farmer, data.op_type, data.p_hash);
+    const tx = ProduceOwnershipV2Contract.methods.addOwnership(data.farmer, data.op_type, data.p_hash);
     const add_response = await sendTransaction(tx, fromAddress, privateKey);
     let dataAdd = {
       txHash : add_response.transactionHash,
@@ -65,7 +65,7 @@ async function addOwnership(data) {
 
 // Function to register  farmer produce  
 async function changeOwnership(data) { 
-    const tx = ProduceOwnershipContract.methods.changeOwnership(data.owner, data.op_type, data.p_hash, data.to);
+    const tx = ProduceOwnershipV2Contract.methods.changeOwnership(data.owner, data.op_type, data.p_hash, data.to);
     const change_response = await sendTransaction(tx, fromAddress, privateKey);
     let dataChange = {
       txHash : change_response.transactionHash,
@@ -79,13 +79,13 @@ async function changeOwnership(data) {
 
 // Function to get current consignment owner
 async function currentConsignmentOwner(data) {
-    const consignment = await ProduceOwnershipContract.methods.currentConsignmentOwner(data).call();
+    const consignment = await ProduceOwnershipV2Contract.methods.currentConsignmentOwner(data).call();
     return consignment;
 }
 
 // Function to get current produce owner
 async function currentProduceOwner(data) {
-    const produce = await ProduceOwnershipContract.methods.currentProduceOwner(data).call();
+    const produce = await ProduceOwnershipV2Contract.methods.currentProduceOwner(data).call();
     return produce;
 }
 

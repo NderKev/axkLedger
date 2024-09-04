@@ -100,7 +100,6 @@ exports.createXRP = async (req, res) => {
         if (xrpExists && xrpExists.length) {
             return res.status(403).json({ msg : 'xrpExists' });
           }
-        
         await wallet.createXRP({wallet_id : wallet_id, pubKey : pubKey, privKey : privKey, index : index,  address : address, balance : balance });
         return res.json({wallet_id : wallet_id, xrp : address, msg : 'xrp wallet created'});
     }catch (error) {

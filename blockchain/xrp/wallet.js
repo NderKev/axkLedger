@@ -3,6 +3,10 @@ const express = require('express');
 const CryptoJS = require("crypto-js");
 const pinHash = require('sha256');
 const bcrypt = require('bcryptjs');
+const walletModel = require('../../server/psql/models/wallet');
+const userModel = require('../../server/psql/models/users');
+const { check, validationResult } = require('express-validator');
+const {validateToken} = require('../../server/psql/middleware/auth');
 const router  = express.Router();
 const {successResponse, errorResponse} = require('./libs/response');
    const logStruct = (func, error) => {
@@ -35,25 +39,32 @@ const {successResponse, errorResponse} = require('./libs/response');
           }
   }
   
-  router.get('/wallet/test/create', async(req, res, next) => {
+  router.get('/wallet/test/create', validateToken, async(req, res, next) => {
     const response = await createXrpWalletTestNet();
     return res.status(response.status).send(response)
   });
 
-  const createFundXrpWalletTestNet = async(data) => {
+  const createFundXrpWalletTestNet = async(req, res) => {
+    const errors = validationResult(req);
+  
+    if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+    }
+
     try
     { 
           // Define the network client
-          let comb = data.passphrase + data.username;
-          const matchPwd = bcrypt.compareSync(String(comb), data.encrypted);
+          let comb = req.body.passphrase + req.body.username;
+          let _xrp_wallet = await walletModel.getWallet(req.body.wallet_id);
+          const matchPwd = bcrypt.compareSync(String(comb), _xrp_wallet[0].passphrase);
              //validTx.passphrase == cryptPwd ? true : false;
              if (!matchPwd) {
                return errorResponse(401,"passphrase_wrong", {message : "wrongPassphrase"});
              }
-          let kystr = CryptoJS.AES.decrypt(data.mnemonic, pinHash(comb));
+          let kystr = CryptoJS.AES.decrypt(req.body.mnemonic, pinHash(comb));
           const _mnemonic = kystr.toString(CryptoJS.enc.Utf8); 
 
-        const client = new Client("wss://s.altnet.rippletest.net:51233")
+        const client = new Client("wss://s.altnet.rippletest.net:51233");
         await client.connect()
         const _wallet = Wallet.fromMnemonic(_mnemonic);
         const fund_result = await client.fundWallet(_wallet);
@@ -71,6 +82,15 @@ const {successResponse, errorResponse} = require('./libs/response');
               "privKey" : privKey,
               "balance" : balance
             }
+
+        const walletExists = await walletModel.checkXRP({wallet_id : data.wallet_id, address : address});
+
+        if (walletExists && walletExists){
+          return res.status(403).json({ msg : 'xrpExists' });
+        }
+
+        await walletModel.createXRP({wallet_id : data.wallet_id, pubKey : pubKey, privKey : privKey, balance : balance});
+        
         return successResponse(200, wallet, {"wallet" : wallet}, "wallet created and funded");
 
         // Disconnect when done (If you omit this, Node.js won't end the process)
@@ -81,22 +101,33 @@ const {successResponse, errorResponse} = require('./libs/response');
           }
   }
 
-  router.post('/wallet/test/fund', async(req, res, next) => {
-    const response = await createFundXrpWalletTestNet(req.body);
+  router.post('/wallet/test/fund', validateToken, [
+    check('wallet_id', 'Wallet id is required').not().isEmpty(),
+    check('passphrase', 'Please include a passphrase').not().isEmpty(),
+    check('username', 'Username is required').not().isEmpty(),
+    check('mnemonic', 'Mnemonic is required').not().isEmpty()
+  ], async(req, res, next) => {
+    const response = await createFundXrpWalletTestNet(req, res);
     return res.status(response.status).send(response)
   });
 
-  const getXrpWalletTestNetAccountInfo = async(data) => {
+  const getXrpWalletTestNetAccountInfo = async(req, res) => {
+    const errors = validationResult(req);
+  
+    if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+    }
     try
     { 
           // Define the network client
-          let comb = data.passphrase + data.username;
-          const matchPwd = bcrypt.compareSync(String(comb), data.encrypted);
+        let comb = req.body.passphrase + req.body.username;
+        let _xrp_wallet = await walletModel.getWallet(req.body.wallet_id);
+        const matchPwd = bcrypt.compareSync(String(comb), _xrp_wallet[0].passphrase);
              //validTx.passphrase == cryptPwd ? true : false;
              if (!matchPwd) {
                return errorResponse(401,"passphrase_wrong", {message : "wrongPassphrase"});
              }
-        let kystr = CryptoJS.AES.decrypt(data.mnemonic, pinHash(comb));
+        let kystr = CryptoJS.AES.decrypt(req.body.mnemonic, pinHash(comb));
         const _mnemonic = kystr.toString(CryptoJS.enc.Utf8); 
         const client = new Client("wss://s.altnet.rippletest.net:51233")
         await client.connect()
@@ -125,25 +156,36 @@ const {successResponse, errorResponse} = require('./libs/response');
           }
   }
 
-  router.post('/wallet/test/account', async(req, res, next) => {
-    const response = await getXrpWalletTestNetAccountInfo(req.body);
-    return res.status(response.status).send(response)
+  router.post('/wallet/test/account', validateToken, [
+    check('wallet_id', 'Wallet id is required').not().isEmpty(),
+    check('passphrase', 'Please include a passphrase').not().isEmpty(),
+    check('username', 'Username is required').not().isEmpty(),
+    check('mnemonic', 'Mnemonic is required').not().isEmpty()
+  ], async(req, res, next) => {
+    const response = await getXrpWalletTestNetAccountInfo(req, res);
+    return res.status(response.status).send(response);
   });
 
 
 
-  const createPaymentXrpTestnet = async(data) => {
+  const createPaymentXrpTestnet = async(req, res) => {
+    const errors = validationResult(req);
+  
+    if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+    }
     try
     { 
        
           // Define the network client
-        let comb = data.passphrase + data.username;
-        const matchPwd = bcrypt.compareSync(String(comb), data.encrypted);
+        let comb = req.body.passphrase + req.body.username;
+        let _xrp_wallet = await walletModel.getWallet(req.body.wallet_id);
+        const matchPwd = bcrypt.compareSync(String(comb), _xrp_wallet[0].passphrase);
              //validTx.passphrase == cryptPwd ? true : false;
              if (!matchPwd) {
                return errorResponse(401,"passphrase_wrong", {message : "wrongPassphrase"});
              }
-        let kystr = CryptoJS.AES.decrypt(data.mnemonic, pinHash(comb));
+        let kystr = CryptoJS.AES.decrypt(req.body.mnemonic, pinHash(comb));
         const _mnemonic = kystr.toString(CryptoJS.enc.Utf8); 
         const client = new Client("wss://s.altnet.rippletest.net:51233")
         await client.connect()
@@ -154,7 +196,7 @@ const {successResponse, errorResponse} = require('./libs/response');
         const tx = {
           TransactionType: "Payment",
           Account: wallet.address,
-          Amount: xrpToDrops(data.amount),
+          Amount: xrpToDrops(req.body.amount),
           Destination: process.env.XRP_ESCROW_ACCOUNT
         };
       
@@ -184,7 +226,7 @@ const {successResponse, errorResponse} = require('./libs/response');
                   {
                     "txResult" : submitted_tx.result.meta.TransactionResult,
                     "details" : submitted_tx,
-                    "amount" : xrpToDrops(data.amount),
+                    "amount" : xrpToDrops(req.body.amount),
                     "destination" : process.env.XRP_ESCROW_ACCOUNT
                   }
               return successResponse(200, _response, {"info" : _response}, "xrp payment transaction info");
@@ -197,8 +239,13 @@ const {successResponse, errorResponse} = require('./libs/response');
     }
   }
 
-  router.post('/test/payment', async(req, res, next) => {
-    const response = await createPaymentXrpTestnet(req.body);
+  router.post('/test/payment', validateToken, [
+    check('wallet_id', 'Wallet id is required').not().isEmpty(),
+    check('passphrase', 'Please include a passphrase').not().isEmpty(),
+    check('username', 'Username is required').not().isEmpty(),
+    check('amount', 'Amount is required').not().isEmpty()
+  ], async(req, res, next) => {
+    const response = await createPaymentXrpTestnet(req, res);
     return res.status(response.status).send(response)
   });
 
