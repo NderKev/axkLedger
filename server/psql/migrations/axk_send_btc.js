@@ -9,7 +9,7 @@ exports.up = function (knex) {
         table.integer('index').unsigned();
         table.string('wif').unique();
         table.string('address').unique();
-        table.string('rawTx', 2000).unique();
+        table.string('rawTx').unique();
         table.string('txHash').unique();
         table.enum('status',['decoded', 'pushed', 'pending', 'complete'])
         table.timestamps();

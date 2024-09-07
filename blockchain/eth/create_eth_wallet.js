@@ -8,18 +8,15 @@ const CryptoJS = require("crypto-js");
 const pinHash = require('sha256');
 const bcrypt = require('bcryptjs');
 const saltRounds = 10;
-//const lightwallet  = require('eth-lightwallet');
 const {Web3, HttpProvider}  = require('web3');
 const hdPath =  require('./libs/path');
-//const SignerProvider = require('ethjs-provider-signer');
-//const setWeb3Provider = require('./libs/setWeb3Provider');
-const { hdkey } = require('@ethereumjs/wallet')
-//const autogenerate = require("./autogenerate");
+const { hdkey, Wallet } = require('@ethereumjs/wallet');
 const provider = require('./libs/provider');
 const userModel = require('../../server/psql/models/users');
-const walletModel = require('../../server/psql/models/wallet');
+const farmerModel = require('../../server/psql/models/farmers');
 const { check, validationResult } = require('express-validator');
-const {validateToken} = require('../../server/psql/middleware/auth');
+const {validateToken, validateAdmin} = require('../../server/psql/middleware/auth');
+
 
 const router  = express.Router();
 const {successResponse, errorResponse} = require('./libs/response');
@@ -27,6 +24,8 @@ const {successResponse, errorResponse} = require('./libs/response');
 const logStruct = (func, error) => {
     return {'func': func, 'file': 'create_eth_wallet', error}
   }
+
+ 
 
   const  createETHTestCr = async(req, res) => {
     const errors = validationResult(req);
@@ -113,7 +112,97 @@ const logStruct = (func, error) => {
         return res.status(wallet.status).send(wallet.data);
     });
 
+    const generateUniqueFarmerId = (length)=> {
+      const characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      let id = '';
+      for (let i = 0; i < length; i++) {
+          const randomIndex = Math.floor(Math.random() * characters.length);
+          id += characters[randomIndex];
+      }
+      return id;
+    }
 
+    const  createFarmerAddress = async(req, res) => {
+      const errors = validationResult(req);
+    
+      if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+      }
+      try {
+      //const network = bitcoin.networks.testnet; // if we are using (testnet) then  we use networks.testnet 
+      const wallet_id = generateUniqueFarmerId(32);
+      /** const farmerExists = await farmerModel.checkFarmerExists(req.body.wallet_id);
+      if (farmerExists && farmerExists.length) {
+        return res.status(403).json({ msg : 'farmer exists' });
+      } **/
+      const { name, location} = req.body;
+      const wallet = {};
+      
+      //let mnemonic = bip39.generateMnemonic();
+      let comb = name + wallet_id + location; 
+      const wallet_eth =  Wallet.generate();//hdkey.EthereumHDKey.fromMnemonic(mnemonic, pinHash(comb));
+      //console.log(wallet_eth.getWallet().getAddressString()) 
+      console.log(wallet_eth);
+      console.log(wallet_eth.getAddressString());
+      const farmer_address = wallet_eth.getAddressString();//wallet_eth.getWallet().getAddressString();
+      console.log(wallet_eth.getPrivateKeyString() + "; " + wallet_eth.getPublicKeyString());
+      const private_key = wallet_eth.getPrivateKeyString();
+      const public_key = wallet_eth.getPublicKeyString();
+      wallet.wallet_id = wallet_id;
+      wallet.private_key = CryptoJS.AES.encrypt(private_key, pinHash(comb)).toString();
+      wallet.address = farmer_address;
+      wallet.public_key = CryptoJS.AES.encrypt(public_key, pinHash(comb)).toString();;
+      //wallet.wif = cryptKey;
+      //wallet.index = 0;
+      let key = pinHash(comb);
+      wallet.name = name;
+      wallet.location = location;
+      //wallet.xPub = cryptXpub;
+      //wallet.xPriv = cryptXpriv;
+      console.log(`
+      Wallet generated:
+       - Address  : ${farmer_address}, 
+       - Mnemonic : ${public_key}
+           
+      `)
+  
+      
+      const addressExists = await farmerModel.checkFarmerExists(farmer_address);
+      if (addressExists && addressExists.length) {
+          return res.status(403).json({ msg : 'farmerAddressExists' });
+        }
+      
+      await farmerModel.createFarmer({wallet_id : wallet.wallet_id, address : wallet.address, name : wallet.name, location : req.body.location, private_key : wallet.private_key, public_key : wallet.public_key, key : key });
+      //await walletModel.cryptoBalance({wallet_id : wallet.wallet_id, crypto : "eth", address : wallet.address});
+      const payload = {
+        farmer: {
+          wallet_id: wallet_id,
+          name : name,
+          location : location,
+          address : farmer_address
+        },
+      };
+      const token = farmerModel.createToken(payload);
+      wallet.token = token.token;
+      const tokenExpiry = farmerModel.getExpiryDate(token);
+      await farmerModel.createFarmerToken({address : farmer_address, wallet_id : wallet.wallet_id, expiry : tokenExpiry.data.exp, token : token});
+      return successResponse(201, wallet, 'farmerWalletCreated');
+      } catch(error){
+        console.error('error -> ', logStruct('createFarmerAddress', error))
+        return errorResponse(error.status, error.message);
+      }
+      }
+
+    router.post('/create/farmer', validateToken, validateAdmin, [
+        check('name', 'farmer name is required').not().isEmpty(),
+        check('location', 'Please include farmer location').not().isEmpty()
+      ],  async(req, res, next) => {
+          console.log(req.body);
+          //const { username, wallet_id, mnemonic, passphrase, encrypted} = req.body
+          const farmer = await createFarmerAddress(req, res);
+        
+          return res.status(farmer.status).send(farmer.data);
+      });
 
     const balanceWalletEth = async(data) => {
       try{

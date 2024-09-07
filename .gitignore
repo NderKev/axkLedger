@@ -171,3 +171,5 @@ dist
 # custom
 models/
 *.zip
+nginx/
+server/psql/migrations/axk_send_btc.js

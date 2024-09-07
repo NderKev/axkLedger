@@ -122,7 +122,7 @@ async function sellFarmProduce(data) {
       txHash : sell_response.transactionHash,
       hash : data.hash,
       index : data.index,
-      farmer : data.farmer,
+      //farmer : data.farmer,
       buyer : data.buyer,
       amount : data.amount,
       price : data.price,
