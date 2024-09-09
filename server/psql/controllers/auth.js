@@ -78,53 +78,6 @@ exports.login = async (req, res) => {
     }
   };
 
-  exports.getUserPermissions = async (req, res) => {
-    try {
-      const user = await users.getUserPermissions();
-      return res.status(200).json(user);
-    } catch (err) {
-      console.error(err.message);
-      return res.status(500).send('Internal server error get user permissions');
-    }
-  };
 
-  exports.getUserRoles = async (req, res) => {
-    try {
-      const user = await users.getUserRoles();
-      return res.status(200).json(user);
-    } catch (err) {
-      console.error(err.message);
-      return res.status(500).send('Internal server error get user roles');
-    }
-  };
-
-  exports.createUserRole = async (req, res) => {
-    try {
-      //const checkRole = await users.checkUserRole(req.body.role);
-      if (checkRole || checkRole.length){
-        return res.status(403).json({ msg : 'userRoleExists' });
-        }
-      const user = await users.createUserRole(req.body.role);
-      return res.status(200).json(user);
-    } catch (err) {
-      console.error(err.message);
-      return res.status(500).send('Internal server error create user roles');
-    }
-  };
-
-
-  exports.updateUserRole = async (req, res) => {
-    try {
-      /** const checkRole = await users.checkUserRole(req.body.role);
-      if (checkRole || checkRole.length){
-        return res.status(403).json({ msg : 'userRoleExists' });
-        } **/
-      const user = await users.updateUserRole(req.body);
-      return res.status(200).json(user);
-    } catch (err) {
-      console.error(err.message);
-      return res.status(500).send('Internal server error update user roles');
-    }
-  };
 
   

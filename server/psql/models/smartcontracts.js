@@ -39,3 +39,80 @@ exports.createConsignment = async (data) => {
     console.info("query -->", query.toQuery())
     return query;
   };
+
+  exports.sellProduce = async (data) => {
+    const createdAt = moment().format('YYYY-MM-DD HH:mm:ss');
+    const query = db.write('axk_sc_sell').insert({
+      wallet_id: data.wallet_id,
+      farmer: data.farmer,
+      buyer: data.buyer,
+      tx_hash: data.tx_hash,
+      hash: data.hash,
+      timestamp: data.timestamp,
+      amount: data.amount,
+      price: data.price,
+      index: data.index,
+      created_at: createdAt,
+      updated_at: createdAt
+    });
+    console.info("query -->", query.toQuery())
+    return query;
+  };
+
+  exports.checkConsignment = async (data) => {
+    const query = db.read.select('axk_sc_consignments.*' )
+      .from('axk_sc_consignments')
+      .where('farmer', data.farmer)
+      .where('p_hash', data.hash);
+      //.where('address', data.address);   
+      return query;
+  };
+
+
+  exports.checkProduce = async (data) => {
+    const query = db.read.select('axk_sc_products.*' )
+      .from('axk_sc_products')
+      .where('farmer', data.farmer)
+      .where('produce_hash', data.hash);
+      //.where('address', data.address);   
+      return query;
+  };
+
+
+  exports.updateProduct = async (data) => {
+    data.updated_at = moment().format('YYYY-MM-DD HH:mm:ss');
+    const toBeUpdated = {};
+    const canBeUpdated = ['owner', 'tx_hash', 'type'];//['name','description', 'seller_id', 'warehouse_id','updated_at', 'quantity', 'price', 'currency', 'one_time_limit', 'picture'];
+    for (let i in data) {
+      if (canBeUpdated.indexOf(i) > -1) {
+        toBeUpdated[i] = data[i];
+      }
+    }
+    const query = db.write('axk_sc_products')
+      .where('produce_hash', data.hash)
+      .update(toBeUpdated);
+  
+    console.info("query -->", query.toQuery())
+    return query;
+  };
+
+
+
+  exports.updateConsignment = async (data) => {
+    data.updated_at = moment().format('YYYY-MM-DD HH:mm:ss');
+    const toBeUpdated = {};
+    const canBeUpdated = ['owner', 'tx_hash', 'type', 'weight', 'quantity'];
+    for (let i in data) {
+      if (canBeUpdated.indexOf(i) > -1) {
+        toBeUpdated[i] = data[i];
+      }
+    }
+    const query = db.write('axk_sc_consignments')
+      .where('p_hash', data.hash)
+      .update(toBeUpdated);
+  
+    console.info("query -->", query.toQuery())
+    return query;
+  };
+
+  

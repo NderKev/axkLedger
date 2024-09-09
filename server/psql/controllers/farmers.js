@@ -1,7 +1,8 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
-const users = require('../models/farmers');
+const {isAddress} = require("web3-validator");
+const farmers = require('../models/farmers');
 
 
 
@@ -71,14 +72,85 @@ const users = require('../models/farmers');
     }
   }; **/
 
+  exports.createFarmerToken = async (req, res) => {
+    const errors = validationResult(req);
+  
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    
+    const validAddress = isAddress(req.body.address);
+    if (!validAddress || validAddress === 'null'|| typeof validAddress === 'undefined'){
+     return res.status(401).json({ msg: 'Invalid address!' });
+    } 
+    const { address, wallet_id, token} = req.body;
+    
+    try {
+        const userExists = await farmers.checkFarmerExists(address);
+        if (!userExists && !userExists.length) {
+          return res.status(403).json({ msg : 'farmer doesnt exist' });
+        }
+        if (wallet_id !== userExists[0].wallet_id) {
+          return res.status(403).json({ msg : 'farmer wallet id mismatch' });
+        }
+        const tokenExists = await farmers.getCurrentFarmerToken({address : address, token : token});
+        if (tokenExists && tokenExists.length) {
+          if (token !== tokenExists[0].token) {
+            return res.status(403).json({ msg : 'farmer token mismatch' });
+          }
+          else {
+          var timeNow = Math.floor(Date.now() / 1000);
+          if (tokenExists[0].expiry <= timeNow){
+            const token_new = await farmers.genFarmerToken(auth_token.address);
+            await farmers.updateFarmerToken(token_new);
+            return res.json({token : token_new, msg : 'token updated'});
+          }
+          let ver_token = await farmers.verifyToken(token);
+          return res.json({token : ver_token})
+        }     
+       }
+        else {
+          let auth_token = await farmers.verifyToken(token);
+          if (auth_token.valid == true && auth_token.message === "valid"){
+            await farmers.createFarmerToken(auth_token);//{address : auth_token.address, wallet_id : auth_token.wallet_id, token : auth_token.token, expiry : auth_token.expiry}
+            return res.json({token: auth_token, msg : 'token created'});
+          }
+          if (auth_token.valid == true && auth_token.message === "expired"){
+            const token_exp = await farmers.genFarmerToken(auth_token.address);
+            await farmers.updateFarmerToken(token_exp);
+            return res.json({token : token_exp, msg : 'token updated'});
+          }
+          return res.json({token : auth_token, msg : 'token creation invalid'});
+        }
+        
+    }catch (error) {
+        console.error(error.message);
+        return res.status(500).json({ msg: 'Internal server error create farmer token' });
+    }
+}
+
   exports.getFarmer = async (req, res) => {
     try {
       const address  = req.body.address;
       console.log(address);
-      const user = await users.getFarmerDetailsByAddress(address);
-      return res.status(200).json(user);
+      const farmer = await farmers.getFarmerDetailsByAddress(address);
+      return res.status(200).json(farmer);
     } catch (err) {
       console.error(err.message);
       return res.status(500).send('Internal server error get user');
     }
   };
+
+
+  exports.getFarmers = async (req, res) => {
+    try {
+      //const address  = req.body.address;
+      //console.log(address);
+      const list_farmers = await farmers.getAllFarmers();
+      return res.status(200).json(list_farmers);
+    } catch (err) {
+      console.error(err.message);
+      return res.status(500).send('Internal server error get all farmers');
+    }
+  };
+

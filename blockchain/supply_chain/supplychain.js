@@ -118,6 +118,7 @@ const addFarmProduceV2 = async(req, res) => {
     consignment.weight = add_prd.weight;
     consignment.quantity = add_prd.quantity;
     await smartcontracts.createConsignment(consignment);
+    product.consignment = consignment;
     return res.send(product); //successResponse(200, bal_axk, 'balance'); 
   } catch (error) {
   console.error('error -> ', logStruct('addFarmProduce v2', error))
@@ -157,6 +158,7 @@ const registerProduce = async(req, res) => {
     product.creation_date = reg_prd.creation_date;
     product.produce_type = reg_prd.produce_type;
     await smartcontracts.createProduce(product);
+    req.product = product;
     return res.send(reg); //successResponse(200, bal_axk, 'balance'); 
   } catch (error) {
   console.error('error -> ', logStruct('registerProduce V2', error))
@@ -174,15 +176,25 @@ router.post('/reg/product/v2', validateToken, validateAdmin, async(req, res, nex
 
 const addOwnership = async(req, res) => {
   try{
+    //let product_owner = {}; 
     const farmerExists = await farmerModel.checkFarmerExists(req.body.farmer);
     if (!farmerExists && !farmerExists.length) {
       return res.status(403).json({ msg : 'farmerNotExists'});
+    } 
+    const produceExists = await smartcontracts.checkProduce({farmer : req.body.farmer, hash : req.body.p_hash});
+    if (!produceExists && !produceExists.length) {
+      return res.status(403).json({ msg : 'produceNotExists'});
     }    
     //const produce_hash = await ProduceManagement.createHashFromInfo(req.body.farmer, data.lot_number, data.produce, data.storage_date).call();
     const add_own = await ProduceOwnershipV2.addOwnership(req.body);//await ProduceOwnershipV2.addOwnership(req.body);
     const own = {
        own : add_own
     }
+    //product_owner.hash = req.body.p_hash;
+
+    //product_owner.farmer = req.body.farmer;
+    //product_owner.owner = req.body.farmer;
+
     return res.send(own); //successResponse(200, bal_axk, 'balance'); 
   } catch (error) {
   console.error('error -> ', logStruct('addOwnership V2', error))
@@ -227,17 +239,35 @@ router.post('/change/product/v2', validateToken, async(req, res, next) => {
 const sellFarmProduce = async(req, res) => {
     try{
       let sale = {};
+      sale.wallet_id = req.farmer.wallet_id;
+      const consArray = await ProduceManagement.consignments(req.body.hash);
+      if (!consArray && !consArray.farmer) {
+        return res.status(403).json({ msg : 'hashNotExists'});
+      } 
+      if (consArray.farmer !== req.farmer.address){
+        return res.status(403).json({ msg : 'consignment hash address mismatch'});
+      }
+      sale.farmer = req.farmer.address;
       const buyerExists = await walletModel.isEVM(req.body.buyer);
       if (!buyerExists && !buyerExists.length) {
         return res.status(403).json({ msg : 'buyerNotExists'});
       } 
-     
+      sale.buyer = req.body.buyer;
       const sell_pr = await ProduceTraceabilityV8.sellFarmProduce(req.body);
       
       let res_sell = {
          sell : sell_pr
       }
+      sale.tx_hash = sell_pr.txHash;
+      sale.hash = sell_pr.hash;
+      sale.timestamp = sell_pr.timestamp;
+      sale.amount = sell_pr.amount;
+      sale.price = sell_pr.price;
+      sale.index = sell_pr.index;
+      await smartcontracts.sellProduce(sale);
+      res_sell.sale = sale;
       return res.send(res_sell);//uccessResponse(200, bal_axk, 'tokens available'); 
+
     } catch (error) {
     console.error('error -> ', logStruct('sellFarmProduce v2', error))
     return res.send(error.status);//errorResponse(error.status, error.message);

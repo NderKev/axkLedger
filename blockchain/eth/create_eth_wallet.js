@@ -4,6 +4,7 @@ const bip39 = require('bip39')
 const moment = require('moment');
 const express = require('express');
 const cors = require('cors');
+//const jwt = require('jsonwebtoken');
 const CryptoJS = require("crypto-js");
 const pinHash = require('sha256');
 const bcrypt = require('bcryptjs');
@@ -171,21 +172,39 @@ const logStruct = (func, error) => {
       if (addressExists && addressExists.length) {
           return res.status(403).json({ msg : 'farmerAddressExists' });
         }
+      const profileExists = await farmerModel.checkFarmerNameLocationExists({name : wallet.name, location : wallet.location});
+      if (profileExists && profileExists.length) {
+        return res.status(403).json({ msg : 'farmerProfileExists' });
+      } 
       
       await farmerModel.createFarmer({wallet_id : wallet.wallet_id, address : wallet.address, name : wallet.name, location : req.body.location, private_key : wallet.private_key, public_key : wallet.public_key, key : key });
       //await walletModel.cryptoBalance({wallet_id : wallet.wallet_id, crypto : "eth", address : wallet.address});
       const payload = {
         farmer: {
           wallet_id: wallet_id,
+          address : farmer_address,
           name : name,
-          location : location,
-          address : farmer_address
+          location : location
         },
       };
-      const token = farmerModel.createToken(payload);
-      wallet.token = token.token;
-      const tokenExpiry = farmerModel.getExpiryDate(token);
-      await farmerModel.createFarmerToken({address : farmer_address, wallet_id : wallet.wallet_id, expiry : tokenExpiry.data.exp, token : token});
+      
+      await farmerModel.sleep(1000);
+      var token = {};
+      var tokn = farmerModel.createToken(payload);
+      await farmerModel.sleep(1000);
+      if (!tokn) return res.status(401).json({ msg: 'error generating  farmer token!' });  
+      if (tokn){
+        token.token = tokn.token; 
+        console.log("token :" + token.token);
+        var tokenExpiry = farmerModel.getExpiryDate(token.token);
+        await farmerModel.sleep(1000);
+        token.expiry = tokenExpiry.data.exp;
+        console.log("token expiry:" + token.expiry);
+        wallet.token = token;
+        console.log(wallet);
+        await farmerModel.sleep(1000);
+        await farmerModel.createFarmerToken({address : wallet.address, wallet_id : wallet.wallet_id, token : token.token, expiry : token.expiry});
+      }
       return successResponse(201, wallet, 'farmerWalletCreated');
       } catch(error){
         console.error('error -> ', logStruct('createFarmerAddress', error))

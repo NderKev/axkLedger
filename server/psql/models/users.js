@@ -159,9 +159,14 @@ exports.isWalletIdFlagged = async (wallet_id) => {
 exports.getAllUsers = async () => {
   const query = db.read.select('axk_users.*')
   .from('axk_users')
-  //.join('axk_user_permission','axk_user_permission.wallet_id','=','axk_users.id')
-  //.where('carts.wallet_id', '=', wallet_id)
-  //.where('axk_user_permission.role_id', '=', 2);
+  return query;
+};
+
+exports.getBuyers = async () => {
+  const query = db.read.select('axk_users.*')
+  .from('axk_users')
+  .join('axk_user_permission', 'axk_user_permission.wallet_id', '=', 'axk_users.wallet_id')
+  .where('axk_user_permission.role_id', '=', 3);
   return query;
 };
 

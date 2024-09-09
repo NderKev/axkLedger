@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const config = require('../config');
-
+const farmerModel = require('../models/farmers');
 
 const validateToken = (req, res, next) => {
   const token = req.header('x-auth-token');
@@ -79,6 +79,31 @@ const validateFarmer = (req, res, next) => {
   }
 };
 
+const validateFarmerExists = async(req, res, next) => {
+  //const token = req.header('x-farmer-token');
+  //const admin =  req.admin;
+  const farmers = await farmerModel.checkFarmerExists(req.body.farmer);
+  if (!farmers || !farmers.length) return res.status(401).json({ msg: 'Farmer doesnt exist!' });
+  try { 
+        let payload = {
+          farmer : {
+            wallet_id: farmers[0].wallet_id,
+            address : req.body.farmer
+          }
+        }
+        const token =  farmerModel.createToken(payload);
+        const expiry_date =  farmerModel.getExpiryDate(token.token);
+        await farmerModel.updateFarmerToken({address : req.body.farmer, token : token.token, expiry: expiry_date.data.exp});
+        req.farmer.wallet_id = farmers[0].wallet_id;
+         //req.farmer.address = 
+        //req.wallet_id = decoded.data.wallet_id;
+        //req.token = token;
+        next();
+      } catch (err) {
+    console.error('Internal auth error in token validation middleware');
+    res.status(500).json({ msg: 'Internal auth error farmer' });
+  }
+};
 /** const validateTokenMeta = (req, res, next) => {
   const token = req.header('x-auth-token');
 
