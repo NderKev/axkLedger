@@ -15,6 +15,7 @@ const { hdkey, Wallet } = require('@ethereumjs/wallet');
 const provider = require('./libs/provider');
 const userModel = require('../../server/psql/models/users');
 const farmerModel = require('../../server/psql/models/farmers');
+const walletModel = require('../../server/psql/models/wallet');
 const { check, validationResult } = require('express-validator');
 const {validateToken, validateAdmin} = require('../../server/psql/middleware/auth');
 
