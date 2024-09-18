@@ -32,6 +32,9 @@ const ProduceTraceabilityV6 = "0x00eD1d423039DB312Fc9207ABCD11a2aB3a58F33"
 const ProduceTraceabilityV7 = "0x48BAd4ef19BD928Ba7FaCC50463Ea99E3fD9BFCA"
 //https://sepolia-blockscout.lisk.com/address/0x1ee518143512572C5535F6Aed74B26f249A92264#code
 const ProduceTraceabilityV8 = "0x1ee518143512572C5535F6Aed74B26f249A92264"
+//https://sepolia.etherscan.io/address/0x76a1b9E4712E45C4c3D0ac6e2c3028ee0ce4d3b0#code
+const EurcToken = "0x76a1b9E4712E45C4c3D0ac6e2c3028ee0ce4d3b0"
+
 
 module.exports = {
 		axkToken,
@@ -47,4 +50,5 @@ module.exports = {
 		ProduceTraceabilityV8,
 		ProduceOwnershipV1,
 		ProduceOwnershipV2,
+		EurcToken
 }

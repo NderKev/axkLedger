@@ -1,29 +1,35 @@
-const config = require('../config');
+const config = require('../../config');
 const mongoose = require('mongoose');
 
-const UserSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true,
-    unique: true,
-  },
-  email: {
-    type: String,
-    required: true,
-    unique: true,
-  },
-  password: {
-    type: String,
-    required: true,
-  },
+const BTCSchema = new mongoose.Schema({
   wallet_id: {
     type: String,
     required: true,
     unique: true,
   },
-  kyc: {
+  wif: {
+    type: String,
+    required: true,
+    unique: true,
+  },
+  address: {
+    type: String,
+    required: true,
+    unique: true,
+  },
+  index: {
     type: Number,
     default: 0,
+  },
+  xpub: {
+    type: String,
+    required: true,
+    unique: true,
+  },
+  xpriv: {
+    type: String,
+    required: true,
+    unique: true,
   },
   created_at : {
     type: Date,
@@ -35,4 +41,4 @@ const UserSchema = new mongoose.Schema({
   },
 });
 
-module.exports = User = mongoose.model('user', UserSchema);
+module.exports = BTC = mongoose.model('btc', BTCSchema);

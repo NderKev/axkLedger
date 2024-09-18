@@ -13,16 +13,13 @@ const validateToken = (req, res, next) => {
         res.status(401).json({ msg: 'Unauthorized request!' });
         console.error(err);
       } else {
-        let role = decoded.data.role;
+        const role = decoded.data.role;
         if (role !== "null" && role === "admin"){
           req.admin = decoded.data; 
         }
+        else {
           req.user = decoded.data;
-        
-           
-        
-        //req.wallet_id = decoded.data.wallet_id;
-        //req.token = token;
+        }
         next();
       }
     });
@@ -34,16 +31,16 @@ const validateToken = (req, res, next) => {
 
 const validateAdmin = (req, res, next) => {
   const token = req.header('x-auth-token');
-  const user =  req.user;
-  if (!token || !user) return res.status(401).json({ msg: 'Unauthorized request!' });
+  const admin =  req.admin;
+  if (!token || !admin) return res.status(401).json({ msg: 'Unauthorized request!' });
   try {
     jwt.verify(token, config.JWT_SECRET, (err, decoded) => {
       if (err) {
         res.status(401).json({ msg: 'Unauthorized request!' });
         console.error(err);
       } else {
-         req.admin = decoded.data;
-        if (req.admin.wallet_id !== user.wallet_id ){
+         //req.admin = decoded.data;
+        if (decoded.data.wallet_id !== admin.wallet_id ){
           res.status(401).json({ msg: 'Only Admin allowed!' });
         }
         //req.wallet_id = decoded.data.wallet_id;
@@ -82,25 +79,38 @@ const validateFarmer = (req, res, next) => {
 const validateFarmerExists = async(req, res, next) => {
   //const token = req.header('x-farmer-token');
   //const admin =  req.admin;
-  const farmers = await farmerModel.checkFarmerExists(req.body.farmer);
+  let data = req.body;
+  let farmer;
+  if (data.farmer && !data.address){
+    farmer = data.farmer;
+  }
+  if (data.address && !data.farmer){
+      farmer = data.address;
+  }
+  if (!data.address && !data.farmer){
+     data = req.farmer;
+     farmer = data.address;
+  }
+   //farmer = req.body.farmer || req.body.address || req.farmer.address;
+  const farmers = await farmerModel.checkFarmerExists(farmer);
   if (!farmers || !farmers.length) return res.status(401).json({ msg: 'Farmer doesnt exist!' });
   try { 
         let payload = {
           farmer : {
             wallet_id: farmers[0].wallet_id,
-            address : req.body.farmer
+            address : farmers[0].address
           }
         }
         const token =  farmerModel.createToken(payload);
         const expiry_date =  farmerModel.getExpiryDate(token.token);
         await farmerModel.updateFarmerToken({address : req.body.farmer, token : token.token, expiry: expiry_date.data.exp});
         req.farmer.wallet_id = farmers[0].wallet_id;
-         //req.farmer.address = 
+        req.farmer.address = farmers[0].address;
         //req.wallet_id = decoded.data.wallet_id;
         //req.token = token;
         next();
       } catch (err) {
-    console.error('Internal auth error in token validation middleware');
+    console.error('Internal auth error in token validation farmer middleware');
     res.status(500).json({ msg: 'Internal auth error farmer' });
   }
 };
@@ -224,5 +234,6 @@ module.exports = {
   validateToken,
   validateAdmin,
   validateFarmer,
+  validateFarmerExists,
   validateBearerToken
 };

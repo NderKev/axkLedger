@@ -5,6 +5,7 @@ const { WelcomeMail } = require('../../mails');
 const users = require('../models/users');
 const sendEmail = require('../../helpers/sendMail');
 
+
 exports.generateUniqueId = function(length){
     const characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let id = '';
@@ -60,11 +61,11 @@ exports.generateUniqueId = function(length){
       const token =  await users.genToken(input);
       await users.createUserToken(token);
       //const user_name = await users.fetchUserName(wallet_id);
-      /** try {
+       try {
         await sendEmail(email, WelcomeMail(name));
       } catch (error) {
         console.log(error);
-      } **/
+      } 
       return res.json({token , msg : 'user registered'});
       
     } catch (error) {
@@ -74,7 +75,7 @@ exports.generateUniqueId = function(length){
   };
 
   
- 
+
 
 
 

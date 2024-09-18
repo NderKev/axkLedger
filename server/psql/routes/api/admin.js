@@ -2,17 +2,18 @@ const express = require('express');
 const router = express.Router();
 const { check } = require('express-validator');;
 const { validateAdmin, validateToken } = require('../../middleware/auth');
-const { updateUserPermission, createAdminUser, getUserPermission, getUserPermissions, getUserRoles, getBuyers, createUserRole, updateUserRole } = require('../../controllers/admin');
-const { getUser, login} = require('../../controllers/auth');
+const adminController = require('../../controllers/admin');
+const { getUser, login, getUserPin, createUserPin} = require('../../controllers/auth');
 const farmerController = require('../../controllers/farmers');
 
 
 router.get('/', validateToken, validateAdmin, getUser);
-router.get('/buyers', validateToken, validateAdmin, getBuyers);
+router.get('/buyers', validateToken, validateAdmin, adminController.getBuyers);
 router.get('/farmers', validateToken, validateAdmin, farmerController.getFarmers);
-router.get('/permission', validateToken, validateAdmin, getUserPermission);
-router.get('/permissions', validateToken, validateAdmin, getUserPermissions);
-router.get('/roles', validateToken, validateAdmin, getUserRoles);
+router.get('/permission', validateToken, validateAdmin, adminController.getUserPermission);
+router.get('/permissions', validateToken, validateAdmin, adminController.getUserPermissions);
+router.get('/pin', validateToken, validateAdmin, getUserPin);
+router.get('/roles', validateToken, validateAdmin, adminController.getUserRoles);
 
 
 router.post(
@@ -37,41 +38,41 @@ router.post(
     ],
     validateToken,
     validateAdmin,
-    createAdminUser,
+    adminController.createAdminUser,
   );
   
   router.post(
     '/permission',
     [
       check('wallet_id', 'Wallet ID is required').not().isEmpty(),
-      check('role_id', 'Please include a valid role').not().isEmpty(),
+      check('role_id', 'Please include a valid role').isInt().not().isEmpty(),
       check('user_role', 'User Role is required').not().isEmpty(),
     ],
     validateToken,
     validateAdmin,
-    updateUserPermission,
+    adminController.updateUserPermission,
   );
 
   router.post(
     '/role',
     [
       //check('role', 'Please include a valid role').isEmail(),
-      check('role', 'User Role is required').exists(),
+      check('role', 'User Role is required').isString().exists(),
     ],
     validateToken,
     validateAdmin,
-    createUserRole,
+    adminController.createUserRole,
   );
   
   router.post(
     '/update/role',
     [
-      check('role_id', 'User Role ID is required').exists(),
-      check('role', 'User Role is required').exists(),
+      check('role_id', 'User Role ID is required').isInt().exists(),
+      check('role', 'User Role is required').isString().exists(),
     ],
     validateToken,
     validateAdmin,
-    updateUserRole,
+    adminController.updateUserRole,
   );
   
   router.post(
@@ -86,6 +87,16 @@ router.post(
     farmerController.createFarmerToken,
   );
 
+  router.post(
+    '/pin',
+    [
+      //check('pin', 'Please include a valid pin').isEmail(),
+      check('pin', 'Pin is required').isNumeric().exists(),
+    ],
+    validateToken,
+    validateAdmin,
+    createUserPin,
+  );
 
 
 module.exports = router;

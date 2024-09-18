@@ -2,7 +2,6 @@
 const {Web3, HttpProvider} = require("web3");
 const link_testnet_rpc = 'https://rpc.sepolia-api.lisk.com';
 const {BigNumber} = require("bignumber.js");
-//const provider = new Theta.providers.HttpProvider('https://eth-rpc-api-testnet.thetatoken.org/rpc');
 const web3 = new Web3(link_testnet_rpc);
 const chainId = 4202
 const BN = require('bn.js');

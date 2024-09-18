@@ -7,6 +7,8 @@ const {BigNumber} = require("bignumber.js");
 const web3 = new Web3(link_testnet_rpc);
 const chainId = 4202
 const BN = require('bn.js');
+const {successResponse, errorResponse} = require('../../eth/libs/response');
+
 //const web = new Web3.providers.HttpProvider(link_testnet_rpc);
 
 // Contract ABI and address
@@ -1795,20 +1797,33 @@ async function sendTransaction(tx, fromAddress, privateKey) {
     }
 }
 
-// Helper function to call smart contract functions
-async function callFunction(tx, fromAddress, privateKey) {
+// Helper function to send lisk tokens 
+async function sendLisk(txData, fromAddress, privateKey) {
     try {
-        const gas = await tx.estimateGas({ from: fromAddress });
+        const approxTx = await web3.eth.accounts.signTransaction(txData, privateKey);
+        let gas = await approxTx.estimateGas({ from: fromAddress });
+        if (!gas || typeof(gas) === "undefined" || gas === "null"){
+          gas = 30000;
+        }
         const gasPrice = await web3.eth.getGasPrice();
-
-        const txData = tx.encodeABI();
-        const account = web3.eth.accounts.wallet.add(privateKey);
-       
-        
-
-        const receipt = await AXKContract.methods.mint(recipientAddress, amount).send({ from: account[0].address });
-        console.log('Transaction receipt:', receipt);
-        return receipt;
+        const count = await web3.eth.getTransactionCount(fromAddress);
+        const nonce = web3.utils.toHex(count);
+        const signedTx = await web3.eth.accounts.signTransaction(
+          {
+              from: txData.from,
+              to: txData.to,
+              value: txData.value,
+              nonce: nonce,
+              gas,
+              gasPrice,
+          },
+          privateKey
+      );
+        //const txData = tx.encodeABI();
+        //const account = web3.eth.accounts.wallet.add(privateKey);
+        const txHash = await web3.eth.sendTransaction(signedTx);
+        console.log("tx Hash :" + txHash);
+        return txHash;
     } catch (error) {
         console.error('Transaction error:', error);
     }
@@ -1981,13 +1996,12 @@ async function allowance(dta) { // owner, spender
 async function balanceOf(account) {
     const balance = await AXKContract.methods.balanceOf(account).call();
     console.log( "balance: " + balance);
-    //let big_int_bal = BigInt(balance.toString());
+    
     let bal_axk = Number(balance.toString());
     bal_axk = bal_axk * Math.pow(10 , -18);
     bal_axk = parseInt(bal_axk);
     console.log(bal_axk);
 
-    //bal_axk = web3.utils.toWei(bal_axk, "ether");
     return bal_axk;
 }
 
@@ -2051,6 +2065,53 @@ async function totalSupply() {
     return total_supply_axk;
 }
 
+// Function to get Lisk Token balance
+async function liskBalance(data) {
+  const bal_lisk = await web3.eth.getBalance(data.address);
+  console.log(bal_lisk);
+  //bal_eth 
+  let bal_lisk_wei = Number(bal_lisk);
+  console.log(bal_lisk_wei);
+  let bal_wei = bal_lisk_wei * Math.pow(10, -18);
+  console.log(bal_wei);
+  let bal = {}
+  bal.wallet_id = data.wallet_id;
+  bal.crypto = "lisk";
+  bal.address = data.address;
+  bal.balance = bal_wei;
+  // to do fetch lisk price usd 
+  bal.usd = 0;
+  return bal;
+}
+
+// Function to transfer Lisk Token 
+async function transferLisk(data) {
+  //const {from, to, amount, priv_key} = req.body;
+  const bal_lisk = await web3.eth.getBalance(data.from);
+  console.log(bal_lisk);
+  //bal_eth 
+  const bal_lisk_wei = Number(bal_lisk);
+  console.log(bal_lisk_wei);
+  //let bal_wei = bal_lisk_wei * Math.pow(10, -18);
+  const lisk_wei = web3.utils.toWei(data.amount, "ether");
+  const lisk_amount = Number(lisk_wei);
+  const gas_price = await web3.eth.getGasPrice();
+  const _gas = 30000 * Number(gas_price);
+  const sending = lisk_amount + _gas;
+  console.log(sending);
+  if (sending > bal_lisk_wei){
+       //return res.status(401).json({ msg : 'insufficient funds' });
+       return errorResponse(401, "insufficient_funds", {message: "insufficient funds"});
+  }
+  const tx = { from: data.from , to: data.to, value: lisk_wei};
+  const sendTx = await sendLisk(tx, data.from, data.priv_key);
+  const txObj = {
+    txHash : sendTx,
+    amount : lisk_amount
+  }
+  return txObj;
+}
+
 
 module.exports = {
     allowance,
@@ -2069,4 +2130,6 @@ module.exports = {
     transferFrom,
     totalSupply,
     unpause,
+    liskBalance,
+    transferLisk
 }

@@ -1,11 +1,10 @@
-const config = require('../config');
+const config = require('../../config');
 const mongoose = require('mongoose');
 
-const BTCSchema = new mongoose.Schema({
+const WifSchema = new mongoose.Schema({
   wallet_id: {
     type: String,
     required: true,
-    unique: true,
   },
   wif: {
     type: String,
@@ -21,16 +20,6 @@ const BTCSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
-  xpub: {
-    type: String,
-    required: true,
-    unique: true,
-  },
-  xpriv: {
-    type: String,
-    required: true,
-    unique: true,
-  },
   created_at : {
     type: Date,
     default: Date.now,
@@ -41,4 +30,4 @@ const BTCSchema = new mongoose.Schema({
   },
 });
 
-module.exports = BTC = mongoose.model('btc', BTCSchema);
+module.exports = Wif = mongoose.model('wif', WifSchema);

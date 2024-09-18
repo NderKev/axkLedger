@@ -15,6 +15,7 @@ const walletModel = require('../../server/psql/models/wallet');
 const userModel = require('../../server/psql/models/users');
 const { check, validationResult } = require('express-validator');
 const {validateToken} = require('../../server/psql/middleware/auth');
+const {authenticateUser, getUserPin, authenticatePin} = require('../../server/psql/controllers/auth');
 //const createWalletTestUrl = "localhost:8000/axkledger/v1/api/wallet/wallet";
 const router  = express.Router();
 const {successResponse, errorResponse} = require('./lib/response');
@@ -46,7 +47,11 @@ const walletExists = await walletModel.checkWallet(req.user.wallet_id);
 if (walletExists && walletExists.length) {
     return res.status(403).json({ msg : 'walletExists' });
   }
-let _user = req.body.username;
+const check_pin = await getUserPin(req, res);
+if (check_pin.pin && check_pin.msg === 'PinSet'){
+     await authenticatePin(req, res);
+}
+let _user = req.user.user;
 let _pass = req.body.passphrase;
 let _walletid = req.body.wallet_id;
 const str = _pass + _user;
@@ -126,8 +131,7 @@ return successResponse(201, wallet, 'walletCreated');
 
 router.post('/testnet', validateToken, [
   check('wallet_id', 'Wallet id is required').not().isEmpty(),
-  check('passphrase', 'Please include a passphrase').not().isEmpty(),
-  check('username', 'Username is required').not().isEmpty()
+  check('passphrase', 'Please include a passphrase').isNumeric().not().isEmpty()
 ], async(req, res, next) => {
 
 const wallet =  await createBTCTest(req, res);
@@ -199,8 +203,7 @@ const createBTCMain = function(data){
 
 router.post('/main', validateToken, [
   check('wallet_id', 'Wallet id is required').not().isEmpty(),
-  check('passphrase', 'Please include a passphrase').not().isEmpty(),
-  check('username', 'username is required').not().isEmpty()
+  check('passphrase', 'Please include a passphrase').not().isEmpty()
 ], async(req, res, next) => {
     const data =  createBTCMain(req.body);
     const token = req.token;

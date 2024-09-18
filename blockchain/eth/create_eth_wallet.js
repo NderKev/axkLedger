@@ -18,7 +18,7 @@ const farmerModel = require('../../server/psql/models/farmers');
 const walletModel = require('../../server/psql/models/wallet');
 const { check, validationResult } = require('express-validator');
 const {validateToken, validateAdmin} = require('../../server/psql/middleware/auth');
-
+const {authenticateUser, decryptPrivKey, authenticatePin} = require('../../server/psql/controllers/auth');
 
 const router  = express.Router();
 const {successResponse, errorResponse} = require('./libs/response');
@@ -31,7 +31,6 @@ const logStruct = (func, error) => {
 
   const  createETHTestCr = async(req, res) => {
     const errors = validationResult(req);
-  
     if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
     }
@@ -46,42 +45,30 @@ const logStruct = (func, error) => {
         return res.status(403).json({ msg : 'walletNotExists' });
       }
 
-    if (req.body.wallet_id !== req.user.wallet_id) {
-      return res.status(403).json({ msg : 'user wallet id mismatch' });
-    }
+    const auth_evm = await authenticateUser(req, res);
 
     const path =`m/49'/1'/0'/0`; // we use  `m/49'/1'/0'/0` for testnet network
     const hdPath =  require('./libs/path');
     const wallet = {};
-    
-    //let mnemonic = bip39.generateMnemonic()
-    let comb = req.body.passphrase + req.user.user;
-    let _passphrase = await walletModel.getWallet(req.body.wallet_id);
-    const matchPwd = bcrypt.compareSync(String(comb), _passphrase[0].passphrase);
-       //validTx.passphrase == cryptPwd ? true : false;
-       if (!matchPwd) {
-         return errorResponse(401,"passphrase_wrong", {message : "wrongPassphrase"});
-       }
-
-    let kystr = CryptoJS.AES.decrypt(_passphrase[0].mnemonic, pinHash(comb));
-    const _mnemonic = kystr.toString(CryptoJS.enc.Utf8); 
-    const wallet_eth = hdkey.EthereumHDKey.fromMnemonic(_mnemonic, pinHash(comb));
-    console.log(wallet_eth.getWallet().getAddressString()) 
-    const eth_address = wallet_eth.getWallet().getAddressString();
+    const check_pin = await getUserPin(req, res);
+    if (check_pin.pin && check_pin.msg === 'PinSet'){
+          await authenticatePin(req, res);
+    } 
+    const eth_address = decryptPrivKey(auth_evm);
   
     wallet.wallet_id = req.body.wallet_id;
-    wallet.mnemonic = CryptoJS.AES.encrypt(_mnemonic, pinHash(comb)).toString();
+    //wallet.mnemonic = CryptoJS.AES.encrypt(_mnemonic, pinHash(comb)).toString();
     wallet.username = req.user.user;
     //wallet.passphrase = bcrypt.hashSync(String(comb), saltRounds);
     //wallet.wif = cryptKey;
     wallet.index = 0;
-    wallet.address = eth_address;
+    wallet.address = eth_address.addr;
     //wallet.xPub = cryptXpub;
     //wallet.xPriv = cryptXpriv;
     console.log(`
     Wallet generated:
-     - Address  : ${eth_address}, 
-     - Mnemonic : ${_mnemonic}
+     - Address  : ${eth_address.addr}, 
+     - user_name : ${req.user.user}
          
     `)
 
@@ -93,7 +80,13 @@ const logStruct = (func, error) => {
     
     await walletModel.createEVM({wallet_id : wallet.wallet_id, address : wallet.address, index : wallet.index});
     await walletModel.cryptoBalance({wallet_id : wallet.wallet_id, crypto : "eth", address : wallet.address});
-   
+    await walletModel.cryptoBalance({wallet_id : wallet.wallet_id, crypto : "lisk", address : wallet.address});
+    await walletModel.cryptoBalance({wallet_id : wallet.wallet_id, crypto : "usdc", address : wallet.address});
+    await walletModel.cryptoBalance({wallet_id : wallet.wallet_id, crypto : "usdt", address : wallet.address});
+    await walletModel.cryptoBalance({wallet_id : wallet.wallet_id, crypto : "axk", address : wallet.address});
+    //await walletModel.cryptoBalance({wallet_id : wallet.wallet_id, crypto : "chnt", address : wallet.address});
+    //await walletModel.cryptoBalance({wallet_id : wallet.wallet_id, crypto : "eurc", address : wallet.address});
+
     return successResponse(201,wallet, 'evmWalletCreated');
     } catch(error){
       console.error('error -> ', logStruct('createETHTestCr', error))
@@ -104,7 +97,7 @@ const logStruct = (func, error) => {
 
     router.post('/create/wallet', validateToken, [
       check('wallet_id', 'Wallet id is required').not().isEmpty(),
-      check('passphrase', 'Please include a passphrase').not().isEmpty(),
+      check('passphrase', 'Please include a passphrase').isNumeric().not().isEmpty(),
       check('username', 'Username is required').not().isEmpty()
     ],  async(req, res, next) => {
         console.log(req.body);
@@ -131,12 +124,7 @@ const logStruct = (func, error) => {
       return res.status(400).json({ errors: errors.array() });
       }
       try {
-      //const network = bitcoin.networks.testnet; // if we are using (testnet) then  we use networks.testnet 
       const wallet_id = generateUniqueFarmerId(32);
-      /** const farmerExists = await farmerModel.checkFarmerExists(req.body.wallet_id);
-      if (farmerExists && farmerExists.length) {
-        return res.status(403).json({ msg : 'farmer exists' });
-      } **/
       const { name, location} = req.body;
       const wallet = {};
       
@@ -153,14 +141,10 @@ const logStruct = (func, error) => {
       wallet.wallet_id = wallet_id;
       wallet.private_key = CryptoJS.AES.encrypt(private_key, pinHash(comb)).toString();
       wallet.address = farmer_address;
-      wallet.public_key = CryptoJS.AES.encrypt(public_key, pinHash(comb)).toString();;
-      //wallet.wif = cryptKey;
-      //wallet.index = 0;
+      wallet.public_key = CryptoJS.AES.encrypt(public_key, pinHash(comb)).toString();
       let key = pinHash(comb);
       wallet.name = name;
       wallet.location = location;
-      //wallet.xPub = cryptXpub;
-      //wallet.xPriv = cryptXpriv;
       console.log(`
       Wallet generated:
        - Address  : ${farmer_address}, 
@@ -179,7 +163,6 @@ const logStruct = (func, error) => {
       } 
       
       await farmerModel.createFarmer({wallet_id : wallet.wallet_id, address : wallet.address, name : wallet.name, location : req.body.location, private_key : wallet.private_key, public_key : wallet.public_key, key : key });
-      //await walletModel.cryptoBalance({wallet_id : wallet.wallet_id, crypto : "eth", address : wallet.address});
       const payload = {
         farmer: {
           wallet_id: wallet_id,
@@ -238,9 +221,7 @@ const logStruct = (func, error) => {
       const ethPrice = require('eth-price');
  
       try {
-        const response = await ethPrice('usd');//transactionsModel.updateTransactionRef(validInput);
-        //const response = {};
-        //response.data = price;
+        const response = await ethPrice('usd');
         console.log(response);
         return successResponse(200,response)
       } catch (error) {
@@ -262,7 +243,6 @@ const logStruct = (func, error) => {
          const web3 = new Web3(httpProvider);
          const bal_eth = await web3.eth.getBalance(req.body.address);
          console.log(bal_eth);
-         //bal_eth 
          let bal_eth_wei = Number(bal_eth);
          console.log(bal_eth_wei);
          //let bal_wei =  web3.utils.toWei(bal_eth_wei, "ether");
@@ -280,21 +260,9 @@ const logStruct = (func, error) => {
          console.log(eth_prc);
          eth_prc = eth_prc.replace("USD: ",'');
          console.log(eth_prc);
-         //let pr = eth_prc.toFixed(2);
-         //console.log(pr);
          let usd = bal_wei * eth_prc;
          let sum = usd.toFixed(2);
          console.log(sum);
-         /** let ksh_usd = await transactionController.rateUsdToKes();
-
-         ksh_usd = ksh_usd.data.toFixed(2);
-        if(ksh_usd <= 0){
-             ksh_usd = 110
-          } **/
-        //let ksh_usd = 110;
-        // let tF = sum  * ksh_usd;
-         //tF = tF.toFixed(2);
-        // console.log(tF);
          bal.usd = sum;
          await walletModel.updateBalance(bal);
        
@@ -306,11 +274,11 @@ const logStruct = (func, error) => {
      }
 
 
-     router.post('/get/balance', validateToken, [
-      check('wallet_id', 'Wallet id is required').not().isEmpty(),
-      check('address', 'Please include an address').not().isEmpty()
-      //check('user', 'Username is required').not().isEmpty()
-    ], async(req, res, next) => {
+     router.post('/get/balance', [
+      check('wallet_id', 'Wallet id is required').isAlphanumeric().not().isEmpty(),
+      check('address', 'Please include an address').isEthereumAddress().not().isEmpty(),
+      check('x-auth-token', 'User token is required').isJWT().not().isEmpty()
+    ], validateToken, async(req, res, next) => {
 
       const respBal = await calculateEthPrices(req, res); 
 

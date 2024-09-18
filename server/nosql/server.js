@@ -1,6 +1,6 @@
 const path = require('path');
 const express = require('express');
-const config = require('./config');
+const config = require('../config');
 const connectDB = require('./config/db');
 const configureMiddleware = require('./middleware');
 const configureRoutes = require('./routes');

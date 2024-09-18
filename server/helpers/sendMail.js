@@ -1,5 +1,5 @@
 const nodemailer = require('nodemailer');
-const config = require('../config');
+const config = require('../psql/config');
 
 const sendEmail = async (sendToEmail, template) => {
   const { subject, text, html } = template;

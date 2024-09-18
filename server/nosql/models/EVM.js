@@ -1,30 +1,19 @@
-const config = require('../config');
+const config = require('../../config');
 const mongoose = require('mongoose');
 
-const XRPSchema = new mongoose.Schema({
+const EVMSchema = new mongoose.Schema({
   wallet_id: {
     type: String,
-    required: true
-  },
-  pubKey: {
-    type: String,
     required: true,
-    unique: true,
-  },
-  privKey: {
-    type: String,
-    required: true,
-    unique: true,
   },
   address: {
     type: String,
     required: true,
     unique: true,
   },
-  balance: {
+  index: {
     type: Number,
     default: 0,
-    required: true,
   },
   created_at : {
     type: Date,
@@ -36,4 +25,4 @@ const XRPSchema = new mongoose.Schema({
   },
 });
 
-module.exports = BTC = mongoose.model('xrp', XRPSchema);
+module.exports = EVM = mongoose.model('evm', EVMSchema);

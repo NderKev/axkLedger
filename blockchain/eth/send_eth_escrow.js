@@ -1,6 +1,5 @@
-const bip32 = require('bip32')
-const bip39 = require('bip39')
-//const bitcoin = require('bitcoinjs-lib')
+const bip32 = require('bip32');
+const bip39 = require('bip39');
 const moment = require('moment');
 const express = require('express');
 const cors = require('cors');
@@ -8,18 +7,19 @@ const CryptoJS = require("crypto-js");
 const pinHash = require('sha256');
 const bcrypt = require('bcryptjs');
 const saltRounds = 10;
-//const lightwallet  = require('eth-lightwallet');
 const { Web3 }  = require('web3');
 const hdPath =  require('./libs/path');
 const SignerProvider = require('ethjs-provider-signer');
-//const setWeb3Provider = require('./libs/setWeb3Provider');
 const provider = require('./libs/provider');
-
-//const autogenerate = require("./autogenerate");
+const { hdkey, Wallet } = require('@ethereumjs/wallet');
 const transactionModel = require('../../server/psql/models/transactions');
 const walletModel = require('../../server/psql/models/wallet');
 const { check, validationResult } = require('express-validator');
 const {validateToken} = require('../../server/psql/middleware/auth');
+const {authenticateUser, decryptPrivKey} = require('../../server/psql/controllers/auth');
+const {isAddress} = require("web3-validator");
+const usdtContractAbi = require('./libs/usdtContractAbi');
+const usdtContract = require("./libs/usdtContract");
 require('dotenv').config({ path: '../../.env'});
 const router  = express.Router();
 const {successResponse, errorResponse} = require('./libs/response');
@@ -70,65 +70,76 @@ const checkEthUsdPrice = async () => {
   }
 
 const send_ether_to_escrow = async(req, res) => {
-  const errors = validationResult(req);
-  
-  if (!errors.isEmpty()) {
-  return res.status(400).json({ errors: errors.array() });
-  }
-
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+    }
     try {
-      let comb = req.body.passphrase + req.user.user;
-      const _passphrase = await walletModel.getWallet(req.body.wallet_id);
-      const _evm = await walletModel.getEVM(req.body.wallet_id);
-      const matchPwd = bcrypt.compareSync(String(comb), _passphrase[0].passphrase);
-      //validTx.passphrase == cryptPwd ? true : false;
-      if (!matchPwd) {
-        return errorResponse(401,"passphrase_wrong", {message : "wrongPassphrase"});
-      }
-     
-      if (req.body.wallet_id !== req.user.wallet_id) {
-        return res.status(403).json({ msg : 'user wallet id mismatch' });
-      }
-
+      const auth_data = await authenticateUser(req, res);
+      //console.log(auth_data);
      //const btc_balance = wall_bal[0].balance;
+     const amount_eth = Number(req.body.amount);
+     console.log(amount_eth);
+     //if (amount_eth < 0)
+     //console.log();
      const httpProvider = new Web3.providers.HttpProvider(provider.sepolia);
      const web3 = new Web3(httpProvider);
-     let ethBalance = await web3.eth.getBalance(_evm[0].address);
-     ethBalance = Number(ethBalance);
-     ethBalance = await web3.utils.toWei(ethBalance, "ether");//ethBalance.toNumber();
+     const ethBalance = await web3.eth.getBalance(auth_data.evm.address);
      console.log(ethBalance);
+     //ethBalance = Number(ethBalance);
+     //ethBalance = await web3.utils.toWei(ethBalance, "ether");//ethBalance.toNumber();
+     //console.log(ethBalance);
+     const eth_balance = Number(ethBalance);
+     console.log(eth_balance);
      //ethBalance = ethBalance * Math.pow(10, -18);
-     let amount_eth = Number(req.body.amount);
-     const gasPrice = await web3.eth.getGasPrice();
-     let ethAmount = await web3.utils.toWei(amount_eth, "ether");
+     const _gasprice = await web3.eth.getGasPrice();
+     const gas_price = Number(_gasprice);
+     //const gasPrice_ = web3.utils.fromWei(gas_price, "gwei");
+     //console.log(gasPrice_);
+     //const gasPrice = web3.utils.toWei("300", "gwei");
+     //console.log(gasPrice);
+     const ethAmount =  web3.utils.toWei(amount_eth, "ether");
      console.log(ethAmount);
+     const eth_amount = Number(ethAmount);
+     console.log(eth_amount);
     // gasPrice = gasPrice.toNumber();
-     var gasLimit = 30000;//await web3.eth.sendTransaction({to : process.env.ESCROW_ACCOUNT_ETH, value : ethAmount }).estimateGas({ from: _evm[0].address });//get current gas limit
+     //const checkGas = await web3.eth.sendTransaction({to : process.env.ESCROW_ACCOUNT_ETH, value : ethAmount }).estimateGas({ from: _evm[0].address });
+     const gasLimit = 53000;////get current gas limit
      //let sending;
-     let gas = gasLimit * Number(gasPrice);
-     let sending = ethAmount + gas;
-     if (sending < ethBalance){
+     const _gas = gasLimit * gas_price;
+     const sending = eth_amount + _gas;
+     console.log(sending);
+     if (sending > eth_balance){
         return errorResponse(401, "insufficient_funds", {message: "insufficient funds"});
      }
-     
-     let keystrl = CryptoJS.AES.decrypt(_passphrase[0].mnemonic , pinHash(comb));
-     const keystore = keystrl.toString(CryptoJS.enc.Utf8);
 
-     const NewProvider = new SignerProvider(provider.sepolia, {
-      signTransaction: keystore.signTransaction.bind(keystore),
-      accounts: (cb) => cb(null,keystore.getAddresses()),
-    });
-     web3.setProvider(NewProvider);
-      var sendParams = { from: _evm[0].address , to: process.env.ESCROW_ACCOUNT_ETH, value: ethAmount, gas: gasLimit, gasPrice: gasPrice };
-      let txEth = await web3.eth.sendTransaction(sendParams);
+      const dec_amount = amount_eth * Math.pow(10, 6);
+     
+      const p_key = decryptPrivKey(auth_data);
+      const toAddress = req.body.to || null;
+      const validTo = isAddress(toAddress);
+      let tx = { from: auth_data.evm.address , to: "", value: ethAmount, gas: gasLimit, gasPrice: _gasprice, chainId: 11155111};
+      if (!toAddress || !validTo || toAddress === null){
+        tx.to = process.env.ESCROW_ACCOUNT_ETH;
+      }
+      else {
+        tx.to = toAddress;
+      }
+
+      console.log(tx);
+      //const tx = 
+      const signedTx = await web3.eth.accounts.signTransaction(tx, p_key.key);
+      //web3.eth.signTransaction()
+      const txHash = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
+      console.log("tx Hash :" + txHash.transactionHash);
       const txObj = {};
       txObj.wallet_id = req.body.wallet_id;
-      txObj.address = _evm[0].address;
-      txObj.tx_hash = txEth;
+      txObj.address = auth_data.evm.address;
+      txObj.tx_hash = txHash.transactionHash;
       txObj.mode = "eth";
       txObj.type = "credit";
-      txObj.to = process.env.ESCROW_ACCOUNT_ETH;
-      txObj.value = ethAmount;
+      txObj.to = tx.to;
+      txObj.value = dec_amount;
       let getPrice = await checkEthUsdPrice();
       let eth_prc = getPrice.data;
       console.log(eth_prc);
@@ -136,12 +147,14 @@ const send_ether_to_escrow = async(req, res) => {
       console.log(eth_prc);
       eth_prc = eth_prc.replace("USD: ",'');
       console.log(eth_prc);
-      let usd = ethAmount * eth_prc *  Math.pow(10, -18);
+      let usd = eth_amount * eth_prc *  Math.pow(10, -18);
       let sum = usd.toFixed(2);
       txObj.fiat = sum;
+      //tx Hash :0xd46167c3b87bb5a2fad4bf9beeab65fe88215cab4876a705e2bbbce39fded944
        
       await transactionModel.createTransaction(txObj);
-      return successResponse(201, txObj, {txHash : txEth, wallet_id : req.body.wallet_id}, 'eth sent');
+      web3.setProvider(httpProvider);
+      return successResponse(201, txObj, {txHash : txObj.tx_hash, wallet_id : req.body.wallet_id}, 'eth sent');
         
       //implement sendRawTX
       
@@ -154,22 +167,31 @@ const send_ether_to_escrow = async(req, res) => {
 /**
 Function/Module Name : escrow
 Purpose : is a POST Api endpoint that allows users to send their Ether holdings to escrow
-Input: passphrase , amount, gaspricfunctione,  tokenToSend, contractAddress, contractABI, keystore
+Input: passphrase , amount, username,  wallet_id
 Output :  The transaction Hash of the sent transaction
 **/
 
 
 
-router.post('/send/escrow', validateToken, [
+router.post('/send/escrow', [
   check('wallet_id', 'Wallet id is required').not().isEmpty(),
-  check('passphrase', 'Please include the pasphrase').not().isEmpty(),
-  check('amount', 'Amount is required').not().isEmpty(),
-  check('username', 'Username is required').not().isEmpty()
-], async(req, res, next) => {
+  check('passphrase', 'Please include the pasphrase').isNumeric().not().isEmpty(),
+  check('amount', 'Amount is required').isNumeric().not().isEmpty()
+], validateToken, async(req, res, next) => {
   const response = await send_ether_to_escrow(req, res);
   return res.status(response.status).send(response)
 });
 
+
+router.post('/send/transfer', [
+  check('wallet_id', 'Wallet id is required').not().isEmpty(),
+  check('passphrase', 'Please include the pasphrase').isNumeric().not().isEmpty(),
+  check('amount', 'Amount is required').isNumeric().not().isEmpty(),
+  check('to', 'Please include a destination address').isEthereumAddress().not().isEmpty(),
+], validateToken, async(req, res, next) => {
+  const response = await send_ether_to_escrow(req, res);
+  return res.status(response.status).send(response)
+});
 
 const check_eth_tx_status = async(req, res) => {
   const errors = validationResult(req);
@@ -201,14 +223,26 @@ const check_eth_tx_status = async(req, res) => {
 
 router.post('/send/escrow/status', validateToken,  [
   check('wallet_id', 'Wallet id is required').not().isEmpty(),
-  check('txHash', 'Please include the transaction hash').not().isEmpty()
+  check('txHash', 'Please include the transaction hash').isHexadecimal().not().isEmpty()
 ], async(req, res, next) => {
   const response = await check_eth_tx_status(req, res);
   return res.status(response.status).send(response)
 });
 
-const check_eth_tx_status_ext = async(data) => {
+const check_eth_tx_status_ext = async(req, res) => {
   try {
+  if (req.body.wallet_id !== req.user.wallet_id) {
+      return res.status(403).json({ msg : 'user wallet id mismatch' });
+  }
+  const comb = req.body.passphrase + req.user.user;
+  const _passphrase = await walletModel.getWallet(req.body.wallet_id);
+  const _evm = await walletModel.getEVM(req.body.wallet_id);
+  const matchPwd = bcrypt.compareSync(String(comb), _passphrase[0].passphrase);
+
+    if (!matchPwd) {
+      return errorResponse(401,"passphrase_wrong", {message : "wrongPassphrase"});
+    }
+    
   const web3 = new Web3.providers.HttpProvider(provider.sepolia);
   const receipt = await web3.eth.getTransactionReceipt(data.txHash);
   const amount = web3.utils.toWei(data.amount, "wei");
@@ -230,7 +264,116 @@ const check_eth_tx_status_ext = async(data) => {
   }
 }
 
+const send_usdt_usdc_token = async(req, res) => {
+  const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+    }
+  try {
+  const auth_ver = await authenticateUser(req, res);
+  const web3 = new Web3.providers.HttpProvider(provider.provider);
+  if (req.body.token === "usdt"){
+     const USDTContract = new web3.eth.Contract(usdtContractAbi, usdtContract);
+     const decimals = await USDTContract.methods.decimals().call;
+     const ten6 = Math.pow(10, decimals);
+     const _amount = Number(req.body.amount) * ten6;
+     console.log(_amount);
+     const usdt_bal = await USDTContract.methods.balanceOf(data.from).call;
+     let bal_usdt = Number(usdt_bal.toString());
+     //bal_usdt = bal_usdt * Math.pow(10 , -);
+     //bal_axk = parseInt(bal_axk);
+     console.log(bal_usdt);
+     if (_amount > bal_usdt){
+      return errorResponse(401, "insufficient_funds_usdt", {message: "insufficient funds"});
+     }
+     let destAddress = req.body.to || null;
+     const validDest = isAddress(destAddress);
+     if (!destAddress || !validDest || destAddress === null){
+       req.body.to = process.env.ESCROW_ACCOUNT_ETH;
+    }
+    else {
+      req.body.to = destAddress;
+    }
+     const pr = decryptPrivKey(auth_ver);
+     const tx = USDTContract.methods.transfer(req.body.to, _amount);//.send({ from: dtt.fromAddress });
+     const transfer_response = await sendTransaction(tx, req.body.from, pr.key);
+     console.log("response : " + transfer_response);
+     let dataTx = {
+       txHash : transfer_response.transactionHash,
+       amount : _amount,
+       to : req.body.to
+     };
+     const txObj = {};
+      txObj.wallet_id = req.body.wallet_id;
+      txObj.address = auth_ver.evm.address;
+      txObj.tx_hash = dataTx.txHash;
+      txObj.mode = "usdt";
+      txObj.type = "credit";
+      txObj.to = req.body.to;
+      txObj.value = Number(req.body.amount);
+      txObj.fiat =   Number(req.body.amount);
 
+     await transactionModel.createTransaction(txObj);
+     return successResponse(201, txObj, {txHash : dataTx.txHash, wallet_id : req.body.wallet_id}, 'usdt sent');
+  }
+}  catch(error){
+  console.error('error -> ', logStruct('send_usdt_usdc_token', error))
+  return errorResponse(error.status, error.message);
+}
+
+}
+
+async function sendTransaction(tx, fromAddress, privateKey) {
+  try {
+      const web3 = new Web3.providers.HttpProvider(provider.provider);
+      const gas = await tx.estimateGas({ from: fromAddress });
+      console.log("gas :" + gas);
+      const gasPrice = await web3.eth.getGasPrice();
+      const count = await web3.eth.getTransactionCount(fromAddress);
+      const txData = tx.encodeABI();
+      const nonce = web3.utils.toHex(count);
+      
+      const signedTx = await web3.eth.accounts.signTransaction(
+          {
+              to: contractAddress,
+              data: txData,
+              nonce: nonce,
+              gas,
+              gasPrice,
+          },
+          privateKey
+      );
+
+      const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
+      console.log('Transaction receipt: ', receipt);
+      return receipt;
+  } catch (error) {
+      console.error('Transaction error: ', error);
+  }
+}
+//
+
+router.post('/usdt/escrow', [
+  check('wallet_id', 'Wallet id is required').not().isEmpty(),
+  check('passphrase', 'Please include the pasphrase').isNumeric().not().isEmpty(),
+  check('amount', 'Amount is required').isNumeric().not().isEmpty(),
+  check('token', 'token id is required').isString().not().isEmpty(),
+], validateToken, async(req, res, next) => {
+  const response = await send_usdt_usdc_token(req, res);
+  return res.status(response.status).send(response)
+});
+
+
+router.post('/usdt/transfer', [
+  check('wallet_id', 'Wallet id is required').not().isEmpty(),
+  check('passphrase', 'Please include the pasphrase').isNumeric().not().isEmpty(),
+  check('amount', 'Amount is required').isNumeric().not().isEmpty(),
+  check('token', 'token id is required').isString().not().isEmpty(),
+  check('to', 'Please include a destination address').isEthereumAddress().not().isEmpty(),
+], validateToken, async(req, res, next) => {
+  const response = await send_usdt_usdc_token(req, res);
+  return res.status(response.status).send(response)
+});
 
 
 module.exports = router;

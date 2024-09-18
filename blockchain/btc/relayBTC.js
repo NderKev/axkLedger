@@ -18,6 +18,7 @@
    const transactions = require('../../server/psql/models/transactions');
    const { check, validationResult } = require('express-validator');
    const { validateToken } = require('../../server/psql/middleware/auth');
+   const {authenticateUser, getUserPin, authenticatePin} = require('../../server/psql/controllers/auth');
    const walletModel = require('../../server/psql/models/wallet');
    require('dotenv').config({ path: '../../.env'});
    const logStruct = (func, error) => {
@@ -341,26 +342,14 @@
        const TESTNET = bitcoin.networks.testnet;
        const saltRounds = 10;
        const psbt = new bitcoin.Psbt({network : TESTNET});
-       let comb = req.body.passphrase + req.body.username;
-       const passphrase = bcrypt.hashSync(String(comb), saltRounds);
-       //const matchPwd = bcrypt.compareSync(String(comb), reqData.encrypted);
-       const _passphrase = await walletModel.getWallet(req.body.wallet_id);
-       const _btc = await walletModel.getBTC(req.body.wallet_id);
-       const matchPwd = bcrypt.compareSync(String(comb), _passphrase[0].passphrase);
-       //validTx.passphrase == cryptPwd ? true : false;
-       if (!matchPwd) {
-         return errorResponse(401, "passphrase_wrong", {message : "wrongPassphrase"});
+       const auth_btc = await authenticateUser(req, res);
+       const check_pin = await getUserPin(req, res);
+       if (check_pin.pin && check_pin.msg === 'PinSet'){
+          await authenticatePin(req, res);
        }
-       /** const hPin = pinHash(comb);
-       const match =  CryptoJS.AES.decrypt(req.body.encryptpin, hPin);
-       const matchPin = match.toString(CryptoJS.enc.Utf8);
-       const correct = match == matchPin ? true : false;
-       if (!correct) {
-        return errorResponse(401 , "pin_wrong", {message : "wrongPin"});
-      } **/
-       let keyWif = CryptoJS.AES.decrypt(_btc[0].wif, pinHash(comb));
+       let keyWif = CryptoJS.AES.decrypt(auth_btc.btc.wif, pinHash(auth_btc.comb));
        const kyWif = keyWif.toString(CryptoJS.enc.Utf8);
-       let keystrl = CryptoJS.AES.decrypt(_passphrase[0].mnemonic, pinHash(comb));
+       let keystrl = CryptoJS.AES.decrypt(auth_btc.wallet.mnemonic, pinHash(auth_btc.comb));
        const keystore = keystrl.toString(CryptoJS.enc.Utf8);
 
        const keyPair = bitcoin.ECPair.fromWIF(kyWif, TESTNET);
@@ -373,11 +362,11 @@
       
        const { address } = p2pkh;
     
-       const  destination  = autogenerate.receivePaymentAddress(_btc[0].index, comb , keystore); //p2wpkhObj.address;
+       const  destination  = autogenerate.receivePaymentAddress(auth_btc.btc.index, auth_btc.comb , keystore); //p2wpkhObj.address;
       
        console.log(address);
       
-       let data = await getTransactions(_btc[0].address, token);
+       let data = await getTransactions(auth_btc.btc.address, token);
      
      
        let balance = data.data.final_balance ;
@@ -393,7 +382,7 @@
         //return res.status(400).send("unconfirmed_tx");
         return errorResponse(400, "pending_tx", {message : "unconfirmed_tx"});
       }
-       const txref = await fetchUnspents(_btc[0].address, token);
+       const txref = await fetchUnspents(auth_btc.btc.address, token);
        
        const utxos = txref.data.txrefs;
        console.log("UTXOS : " + utxos[0].tx_hash);
@@ -442,16 +431,16 @@
         //console.log(respPush.data);
         let txObj = {}, sentObj = {};
         sentObj.wallet_id = req.body.wallet_id;
-        sentObj.from = _btc[0].address;
+        sentObj.from = auth_btc.btc.address;
         sentObj.amount = req.body.amount;
         sentObj.to = req.body.to;
         sentObj.index = destination.index;
-        sentObj.wif = CryptoJS.AES.encrypt(destination.wif, pinHash(comb)).toString();
+        sentObj.wif = CryptoJS.AES.encrypt(destination.wif, pinHash(auth_btc.comb)).toString();
         sentObj.address = destination.address;
         sentObj.rawTx = rawTx;
         sentObj.txHash = tx_hash;
         txObj.wallet_id = req.body.wallet_id;
-        txObj.address = _btc[0].address;
+        txObj.address = auth_btc.btc.address;
         txObj.tx_hash = tx_hash;
         txObj.mode = 'btc';
         txObj.type = 'credit';
@@ -477,7 +466,7 @@
         
         await walletModel.btcSentTxs(sentObj);
 
-       /** if (_btc[0].index > 0 && _btc[0].index !== 'null'){
+       /** if (auth_btc.btc.index > 0 && auth_btc.btc.index !== 'null'){
           let rec_wif = {
             wallet_id : req.body.wallet_id,
             address : destination.address,
@@ -490,7 +479,7 @@
         await transactions.createTransaction(txObj);
         //txObj.address = from;
         txObj.type = 'debit';
-        txObj.tx_hash = _btc[0].address;
+        txObj.tx_hash = auth_btc.btc.address;
         txObj.to = destination.address;
         txObj.value = change;
         txObj.fiat = change_;
@@ -824,6 +813,8 @@ const psbtTransactionBuildMain = async(sendFrom, keystore, key, sendTo, amount, 
      let sum = usd.toFixed(2);
      console.log(sum);
      bal.usd = sum;
+     //req.user.btc = fn;
+     // req.user.usd = sum;
      }
     }
      await walletModel.updateBalance(bal);
@@ -866,12 +857,23 @@ const psbtTransactionBuildMain = async(sendFrom, keystore, key, sendTo, amount, 
  
  router.post('/test/sendBTC/cr', validateToken, [
   check('wallet_id', 'Wallet id is required').not().isEmpty(),
-  check('amount', 'Please include a amount').not().isEmpty(),
-  check('username', 'Please include a username').not().isEmpty(),
-  check('passphrase', 'Please include a passphrase').not().isEmpty(),
+  check('amount', 'Please include a amount').isInt().not().isEmpty(),
+  //check('username', 'Please include a username').not().isEmpty(),
+  check('passphrase', 'Please include a passphrase').isNumeric().not().isEmpty(),
 ], async(req, res, next) => {
   req.body.to = process.env.ESCROW_ACCOUNT_BTC;//"mnxW3nw6AVfAXE55vsoMkyGEGmB9KnWm4N";
   //req.body.passphrase = req.body.pin;
+  const response = await psbtTransactionBuilderCr(req, res);
+  
+  return res.status(response.status).send(response.data)
+ });
+
+ router.post('/test/sendBTC/addr', validateToken, [
+  check('wallet_id', 'Wallet id is required').not().isEmpty(),
+  check('amount', 'Please include a amount').isInt().not().isEmpty(),
+  check('passphrase', 'Please include a passphrase').isNumeric().not().isEmpty(),
+  check('to', 'Please include a destination address').isBtcAddress().not().isEmpty(),
+], async(req, res, next) => {
   const response = await psbtTransactionBuilderCr(req, res);
   
   return res.status(response.status).send(response.data)

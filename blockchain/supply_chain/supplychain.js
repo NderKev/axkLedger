@@ -3,10 +3,9 @@ const router  = express.Router();
 const ProduceManagement = require('./ProduceManagement');
 const ProduceOwnershipV2 = require('./ProduceOwnershipV2');
 const ProduceTraceability = require('./ProduceTraceability');
-const ProduceTraceabilityV1 = require('./ProduceTraceabilityV1');
 const ProduceTraceabilityV8 = require('./ProduceTraceabilityV8');
 const { check, validationResult } = require('express-validator');
-const {validateToken, validateAdmin, validateFarmer } = require('../../server/psql/middleware/auth');
+const {validateToken, validateAdmin, validateFarmer, validateFarmerExists } = require('../../server/psql/middleware/auth');
 const farmerModel = require('../../server/psql/models/farmers');
 const walletModel = require('../../server/psql/models/wallet');
 const smartcontracts = require('../../server/psql/models/smartcontracts');
@@ -17,6 +16,10 @@ const logStruct = (func, error) => {
   }
 
   const registerFarmer = async(req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
     try{
       //let address = req.farmer.address;
       const farmerExists = await farmerModel.checkFarmerExists(req.farmer.address);
@@ -31,7 +34,12 @@ const logStruct = (func, error) => {
   }
   }
 
-  router.get('/reg/v2', validateFarmer, async(req, res, next) => {
+  router.get('/reg/v2', [
+    check('address', 'Please include farmer address').not().isEmpty(),
+    check('name', 'Please include farmer name').not().isEmpty(),
+    check('location', 'Please include farmer location').not().isEmpty(),
+    check('x-farmer-token', 'Please include the farmer auth token').not().isEmpty()
+  ] , validateFarmer, async(req, res, next) => {
     console.log(req.body);
     //const {to, amount} = req.body
     const tx = await registerFarmer(req, res);
@@ -46,6 +54,7 @@ const verifyFarmer = async(req, res) => {
         return res.status(403).json({ msg : 'farmerNotExists' });
       }   
       const ver_fmr = await ProduceTraceabilityV8.verifyFarmer(req.farmer.address);
+      await farmerModel.verifyFarmer(req.farmer);
       return successResponse(200, ver_fmr, 'verify v2'); 
     } catch (error) {
     console.error('error -> ', logStruct('verifyFarmer', error));
@@ -53,7 +62,11 @@ const verifyFarmer = async(req, res) => {
   }
   }
 
-  router.get('/ver/v2', validateFarmer,  async(req, res, next) => {
+  router.get('/ver/v2', [
+    check('address', 'Please include farmer address').not().isEmpty(),
+    check('wallet_id', 'Please include farmer wallet_id').not().isEmpty(),
+    check('x-farmer-token', 'Please include the farmer auth token').not().isEmpty()
+  ], validateFarmer, async(req, res, next) => {
     console.log(req.body);
     //const {to, amount} = req.body
     const ver = await verifyFarmer(req, res);
@@ -126,7 +139,14 @@ const addFarmProduceV2 = async(req, res) => {
 }
 }
 
-router.post('/add/v2', validateToken, validateAdmin, async(req, res, next) => {
+router.post('/add/v2', [
+  check('farmer', 'Please include farmer address').not().isEmpty(),
+  check('produce', 'Please include produce name').not().isEmpty(),
+  check('weight', 'Please include the weight').not().isEmpty(),
+  check('quantity', 'Please include the quantity').isInt().not().isEmpty(),
+  check('agents', 'Please include the agents array').not().isEmpty(),
+  check('x-auth-token', 'Please include the authentication token').not().isEmpty()
+], validateToken, validateAdmin, validateFarmerExists, async(req, res, next) => {
   console.log(req.body);
   //const {to, amount} = req.body
   const product = await addFarmProduceV2(req, res);
@@ -166,7 +186,13 @@ const registerProduce = async(req, res) => {
 }
 }
 
-router.post('/reg/product/v2', validateToken, validateAdmin, async(req, res, next) => {
+router.post('/reg/product/v2',  [
+  check('farmer', 'Please include farmer address').not().isEmpty(),
+  check('hash', 'Please include produce hash').not().isEmpty(),
+  check('produce_type', 'Please include the produce type').not().isEmpty(),
+  check('x-auth-token', 'Please include the authentication token').not().isEmpty()
+] , validateToken, validateAdmin, validateFarmerExists, 
+async(req, res, next) => {
   console.log(req.body);
   //const {to, amount} = req.body
   const reg = await registerProduce(req, res);
@@ -202,7 +228,12 @@ const addOwnership = async(req, res) => {
 }
 }
 
-router.post('/own/product/v2', validateToken, validateAdmin, async(req, res, next) => {
+router.post('/own/product/v2', [
+  check('farmer', 'Please include farmer address').not().isEmpty(),
+  check('p_hash', 'Please include produce hash').not().isEmpty(),
+  check('op_type', 'Please include the operation type').isInt().not().isEmpty(),
+  check('x-auth-token', 'Please include the authentication token').not().isEmpty()
+] ,validateToken, validateAdmin, validateFarmerExists, async(req, res, next) => {
   console.log(req.body);
   //const {to, amount} = req.body
   const own = await addOwnership(req, res);
@@ -212,9 +243,9 @@ router.post('/own/product/v2', validateToken, validateAdmin, async(req, res, nex
 
 const changeOwnership = async(req, res) => {
   try{
-    const ownerExists = await walletModel.isEVM(req.body.owner);
+    const ownerExists = await walletModel.isEVM(req.body.to);
     if (!ownerExists && !ownerExists.length) {
-      return res.status(403).json({ msg : 'ownerNotExists'});
+      return res.status(403).json({ msg : 'newOwnerNotExists'});
     }    
     //const produce_hash = await ProduceManagement.createHashFromInfo(req.body.farmer, data.lot_number, data.produce, data.storage_date).call();
     const change_own = await ProduceOwnershipV2.changeOwnership(req.body);//await ProduceOwnershipV2.addOwnership(req.body);
@@ -228,7 +259,13 @@ const changeOwnership = async(req, res) => {
 }
 }
 
-router.post('/change/product/v2', validateToken, async(req, res, next) => {
+router.post('/change/product/v2', [
+  check('owner', 'Please include the current owner address').not().isEmpty(),
+  check('to', 'Please include the new owner address').not().isEmpty(),
+  check('p_hash', 'Please include produce hash').not().isEmpty(),
+  check('op_type', 'Please include the operation type').isInt().not().isEmpty(),
+  check('x-auth-token', 'Please include the authentication token').not().isEmpty()
+] ,validateToken, async(req, res, next) => {
   console.log(req.body);
   //const {to, amount} = req.body
   const change = await changeOwnership(req, res);
@@ -274,7 +311,15 @@ const sellFarmProduce = async(req, res) => {
   }
   }
 
-  router.post('/sell/v2', validateToken, async(req, res, next) => {
+  router.post('/sell/v2',[
+    check('buyer', 'Please include buyer address').not().isEmpty(),
+    check('farmer', 'Please include farmer address').not().isEmpty(),
+    check('wallet_id', 'Please include farmer wallet id').not().isEmpty(),
+    check('hash', 'Please include produce consignment hash').not().isEmpty(),
+    check('amount', 'Please include the produce sale amount').isInt().not().isEmpty(),
+    check('price', 'Please include the produce sale price').isInt().not().isEmpty(),
+    check('x-auth-token', 'Please include the authentication token').not().isEmpty()
+  ], validateToken, validateFarmerExists, async(req, res, next) => {
     //console.log(req.body);
     //const {to, amount} = req.body
     const sell = await sellFarmProduce(req, res);
@@ -296,7 +341,10 @@ const getFarmer = async(req, res) => {
   }
   }
 
-  router.post('/farmer/v2', validateToken, async(req, res, next) => {
+  router.post('/farmer/v2', [
+    check('address', 'Please include farmer address').not().isEmpty(),
+    check('x-auth-token', 'Please include the authentication token').not().isEmpty()
+  ] , validateToken, validateFarmerExists, async(req, res, next) => {
     //console.log(req.body);
     //const {to, amount} = req.body
     const farmer = await getFarmer(req, res);
@@ -558,4 +606,4 @@ router.post('/lot/v2',  function(req, res, next) {
 
 
 
-module.exports = router;
+module.exports = router; 

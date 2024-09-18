@@ -74,10 +74,7 @@ const generateUniqueLotNumber = (length)=> {
 
 // Function to create produce hash for products and consignments
 async function createHashFromInfo(address, s1, s2, s3) { 
-    //data.consz_lot_number = generateUniqueLotNumber(16);
-    //data.creation_date = moment().format('YYYY-MM-DD HH:mm:ss');
     const hash = await ProduceManagementContract.methods.createHashFromInfo(address, s1, s2, s3).call();
-    //const hash_response = await sendTransaction(tx, fromAddress, privateKey);
     return hash;
 }
 

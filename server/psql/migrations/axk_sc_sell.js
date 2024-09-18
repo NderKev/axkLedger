@@ -7,14 +7,10 @@ exports.up = function (knex) {
         table.string('buyer').index().references('address').inTable('axk_evm').onDelete('restrict').onUpdate('cascade').notNullable();
         table.string('tx_hash', 500).unique().notNullable();
         table.string('hash', 500).unique().notNullable();
-        //table.enum('mode',['axk', 'btc', 'eth', 'lisk', 'usdc', 'usdt', 'xrp']);
-        //table.enum('type',['product', 'consignment', 'productowner', 'consignmentowner', 'changeproduct', 'changeconsignment']);
         table.string('timestamp').notNullable();
-        //table.enum('status',['complete', 'pending', 'failed']);
         table.integer('amount').unsigned();
         table.integer('price').unsigned();
         table.integer('index').unsigned();
-        //table.float('fiat', 10, 5).unsigned();
         table.timestamps();
       })
     ])

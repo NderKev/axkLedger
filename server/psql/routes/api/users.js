@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const { check } = require('express-validator');
-const { createUser } = require('../../controllers/users');
-//const { validateAdmin, validateToken } = require('../../middleware/auth');
+const { createUser, createUserPin, getUserPin } = require('../../controllers/users');
+//const { validateToken } = require('../../middleware/auth');
 
 
 router.post(
@@ -14,7 +14,7 @@ router.post(
       'password',
       'Please enter a password with 6 or more characters',
     ).isLength({ min: 6 }),
-    check('role', 'User role is required').not().isEmpty(),
+    check('role', 'User role is required').isString().not().isEmpty(),
   ],
   createUser,
 );

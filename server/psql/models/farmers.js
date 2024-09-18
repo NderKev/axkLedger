@@ -83,8 +83,6 @@ exports.getFarmerByWalletId = async (data) => {
     const query = db.write('axk_sc_farmers')
       .where('address', data.address)
       .update({
-      name : data.name,
-      location : data.location,
       verified: data.verified || 1,
       updated_at : moment().format('YYYY-MM-DD HH:mm:ss')
     });
