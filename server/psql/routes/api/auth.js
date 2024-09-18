@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const { check } = require('express-validator');
-const {validateToken} = require('../../middleware/auth');
-
-const { getUser, login, createUserPin, getUserPin} = require('../../controllers/auth');
+const {validateToken, validateFarmerExists} = require('../../middleware/auth');
+const {createFarmerKey} = require('../../controllers/farmers');
+const { getUser, login, createUserPin, getUserPin, refreshToken} = require('../../controllers/auth');
 //const { createUserRole } = require('../../models/users');
 
 router.get('/', validateToken, getUser);
@@ -28,5 +28,24 @@ router.post(
   createUserPin,
 );
 
+router.post(
+  '/key',
+  [
+    //check('pin', 'Please include a valid pin').isEmail(),
+    check('key', 'Key is required').isNumeric().exists(),
+  ],
+  validateFarmerExists,
+  createFarmerKey,
+);
+
+router.post(
+  '/refresh',
+  [
+    //check('pin', 'Please include a valid pin').isEmail(),
+    check('passphrase', 'Passphrase is required').isNumeric().exists(),
+  ],
+  validateToken,
+  refreshToken,
+);
 
 module.exports = router;

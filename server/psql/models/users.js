@@ -72,6 +72,29 @@ exports.updatePassword = async (data) => {
   return query;
 };
 
+exports.resetPassword = async (data) => {
+  const query = db.write('axk_users')
+    .where('email', data.email)
+    .update({
+    password : data.token,
+    updated_at : moment().format('YYYY-MM-DD HH:mm:ss')
+  });
+  console.info("query -->", query.toQuery())
+  return query;
+};
+
+exports.setPassword = async (data) => {
+  const query = db.write('axk_users')
+    .where('email', data.email)
+    .where('password', data.token)
+    .update({
+    password : data.password,
+    updated_at : moment().format('YYYY-MM-DD HH:mm:ss')
+  });
+  console.info("query -->", query.toQuery())
+  return query;
+};
+
  exports.fetchUserName = async (wallet_id) => {
    const query = db.read.select('axk_users.name')
    .from('axk_users')
@@ -443,13 +466,6 @@ exports.updateToken = async (reqData) => {
   var input = {};
   input.wallet_id = userExists[0].wallet_id;
   var currentToken = await userModel.getUserTokenByWalletId(userExists[0].wallet_id);
-
-  /** const getToken = await userModel.genAuthToken(userExists[0].email, userExists[0].password);
-   await sleep(1000);
-   //console.log(getToken)
-  var tknExp = await getExpDate(getToken.token);
-  await sleep(1000);
-  //console.log(tknExp)  tknExp.data.exp  tknExp.data.exp  **/
   var timeNow = Math.floor(Date.now() / 1000);
  // console.log(timeNow)
   if (currentToken && currentToken.length){
@@ -592,3 +608,4 @@ catch(err){
   return resp;
 }
 }
+

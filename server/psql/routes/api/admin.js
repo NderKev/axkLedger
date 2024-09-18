@@ -3,7 +3,7 @@ const router = express.Router();
 const { check } = require('express-validator');;
 const { validateAdmin, validateToken } = require('../../middleware/auth');
 const adminController = require('../../controllers/admin');
-const { getUser, login, getUserPin, createUserPin} = require('../../controllers/auth');
+const { getUser, login, getUserPin, createUserPin, refreshToken} = require('../../controllers/auth');
 const farmerController = require('../../controllers/farmers');
 
 
@@ -97,6 +97,18 @@ router.post(
     validateAdmin,
     createUserPin,
   );
+
+  router.post(
+    '/refresh',
+    [
+      //check('pin', 'Please include a valid pin').isEmail(),
+      check('pin', 'Pin is required').isNumeric().exists(),
+    ],
+    validateToken,
+    validateAdmin,
+    refreshToken,
+  );
+
 
 
 module.exports = router;

@@ -3,7 +3,8 @@ const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
 const {isAddress} = require("web3-validator");
 const farmers = require('../models/farmers');
-
+const CryptoJS = require("crypto-js");
+const pinHash = require('sha256');
 
 
 /** const generateUniqueFarmerId = (length)=> {
@@ -154,3 +155,56 @@ const farmers = require('../models/farmers');
     }
   };
 
+  exports.createFarmerKey = async(req , res) => {
+    try {
+      const prev_key = await farmers.getFarmerDetailsByAddress(req.body.address);
+      const prev_comb = prev_key[0].name + prev_key[0].wallet_id + prev_key[0].location;
+      const init_key = prev_key[0].key; 
+      const match_key = pinHash(prev_comb);
+      const correct = match_key == init_key ? true : false;
+       if (!correct) {
+        return res.status(403).json({ msg : 'incorrect_key' });
+      }
+      let str_key = req.body.pin + prev_comb[0].wallet_id + prev_key[0].name;
+      let keyStr = req.body.pin + prev_comb[0].address;
+      const ky = pinHash(str_key);
+      const kyword = pinHash(keyStr);
+      const encrKey = CryptoJS.AES.encrypt(ky, kyword).toString();
+      const init_pub = CryptoJS.AES.decrypt(prev_key[0].public_key, pinHash(prev_comb));
+      const decr_pub = init_pub.toString(CryptoJS.enc.Utf8);
+      const init_priv = CryptoJS.AES.decrypt(prev_key[0].private_key, pinHash(prev_comb));
+      const decr_priv = init_priv.toString(CryptoJS.enc.Utf8);
+      const new_pub = CryptoJS.AES.encrypt(decr_pub, pinHash(str_key)).toString();
+      const new_priv = CryptoJS.AES.encrypt(decr_priv, pinHash(str_key)).toString();
+      //req.body.pin = encrPin;
+      const response = await farmers.updateFarmerKey({address : req.body.wallet_id, private_key : new_priv, public_key : new_pub, key : encrKey}); 
+      return res.json({response , msg : 'farmer key created'});
+  } catch (error) {
+      console.error(error.message);
+      return res.status(500).json({ msg: 'Internal server error create farmer key' });
+    }
+  };
+
+  exports.authenticateFarmer = async(req, res) => {
+    if (req.body.wallet_id !== req.farmer.wallet_id) {
+      return res.status(403).json({ msg : 'farmer wallet id mismatch' });
+    }
+    if (req.user || req.user.wallet_id) {
+      return res.status(403).json({ msg : 'Unauthorized farmer request' });
+    }
+    const _pkey = await farmers.getFarmerDetailsByAddress(req.body.wallet_id);
+    const comb = req.body.pin + _pkey[0].wallet_id + _pkey[0].name;
+    const combStr = req.body.pin + _pkey[0].address;
+    const match =  CryptoJS.AES.decrypt(_pkey[0].key, pinHash(combStr));
+    const match_key = match.toString(CryptoJS.enc.Utf8);
+    const correct = match_key == comb ? true : false;
+    if (!correct) {
+     return res.status(403).json({ msg : 'incorrect_key' });
+   }
+    const auth_data = {
+      comb : comb,
+      address : _pkey[0].address,
+      key :  _pkey[0].private_key
+    }
+    return auth_data;
+  }

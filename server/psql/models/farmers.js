@@ -72,12 +72,16 @@ exports.getFarmerByWalletId = async (data) => {
     const query = db.write('axk_sc_farmers')
       .where('address', data.address)
       .update({
+        private_key : data.private_key,
+        public_key : data.public_key,
         key : data.key,
         updated_at: moment().format('YYYY-MM-DD HH:mm:ss')
       });
     console.info("query -->", query.toQuery())
     return query;
   };
+
+  
   
   exports.verifyFarmer = async (data) => {
     const query = db.write('axk_sc_farmers')

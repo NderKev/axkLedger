@@ -5,6 +5,7 @@ const users = require('../models/users');
 const CryptoJS = require("crypto-js");
 const walletModel = require('../models/wallet');
 const { hdkey, Wallet } = require('@ethereumjs/wallet');
+const farmers = require('../models/farmers');
 const pinHash = require('sha256');
 
 exports.getUser = async (req, res) => {
@@ -85,12 +86,14 @@ exports.login = async (req, res) => {
     if (req.body.wallet_id !== req.user.wallet_id) {
       return res.status(403).json({ msg : 'user wallet id mismatch' });
     }
+    if (req.admin || req.admin.wallet_id) {
+      return res.status(403).json({ msg : 'Unauthorized User request' });
+    }
     const comb = req.body.passphrase + req.user.user;
     const _passphrase = await walletModel.getWallet(req.body.wallet_id);
     const _evm = await walletModel.getEVM(req.body.wallet_id);
     const _btc = await walletModel.getBTC(req.body.wallet_id);
     const matchPwd = bcrypt.compareSync(String(comb), _passphrase[0].passphrase);
-    //validTx.passphrase == cryptPwd ? true : false;
     if (!matchPwd) {
       return res.status(401).json({ msg : 'invalid_password' });
     }
@@ -98,7 +101,33 @@ exports.login = async (req, res) => {
       comb : comb,
       evm  : _evm[0] || null,
       btc : _btc[0] || null,
-      wallet :  _passphrase[0]
+      wallet :  _passphrase[0] || null
+    }
+    return auth_data;
+  }
+
+  exports.authenticateAdmin = async(req, res) => {
+    if (req.user || req.user.wallet_id) {
+      return res.status(403).json({ msg : 'Unauthorized Admin request' });
+    }
+
+    if (req.body.wallet_id !== req.admin.wallet_id) {
+      return res.status(403).json({ msg : 'admin wallet id mismatch' });
+    }
+    
+    const comb = req.body.pin + req.admin.user;
+    const _passphrase = await walletModel.getWallet(req.body.wallet_id);
+    const _evm = await walletModel.getEVM(req.body.wallet_id);
+    const _btc = await walletModel.getBTC(req.body.wallet_id);
+    const matchPwd = bcrypt.compareSync(String(comb), _passphrase[0].passphrase);
+    if (!matchPwd) {
+      return res.status(401).json({ msg : 'invalid_password' });
+    }
+    const auth_data = {
+      comb : comb,
+      evm  : _evm[0] || null,
+      btc : _btc[0] || null,
+      wallet :  _passphrase[0] || null
     }
     return auth_data;
   }
@@ -118,6 +147,11 @@ exports.login = async (req, res) => {
 
   exports.createUserPin = async(req , res) => {
     try {
+      const pin_set = await users.fetchUserPin(req.user.wallet_id);
+      const res_pin = pin_set[0].pin;
+      if (res_pin !== "null" || res_pin !== null || typeof res_pin !== 'undefined'){
+        return res.status(403).json({ msg : 'pinExists' });
+      }
       let str = req.body.pin + req.user.wallet_id + req.user.user;
       let pinStr = req.body.pin + req.user.user;
       const pn = pinHash(str);
@@ -131,6 +165,7 @@ exports.login = async (req, res) => {
       return res.status(500).json({ msg: 'Internal server error create user pin' });
     }
   };
+  
   
   exports.getUserPin = async(req, res) => {
     try {
@@ -159,3 +194,81 @@ exports.login = async (req, res) => {
         return res.status(403).json({ msg : 'incorrect_pin' });
       }
   }
+
+  exports.authenticatePinAdmin = async(req, res) => {
+    const resPin = await users.fetchUserPin(req.admin.wallet_id);
+    const strPin = req.body.pin + req.admin.wallet_id + req.admin.user;
+    const hPin = pinHash(strPin);
+    let verPin = req.admin.wallet_id + req.admin.user;
+    let vPin = pinHash(verPin);
+    const match =  CryptoJS.AES.decrypt(resPin[0].pin, vPin);
+    const matchPin = match.toString(CryptoJS.enc.Utf8);
+    const correct = hPin == matchPin ? true : false;
+    if (!correct) {
+     return res.status(403).json({ msg : 'incorrect_pin' });
+   }
+}
+
+  exports.refreshToken = async(req, res) => {
+    let updateToken = {};
+    try{
+    const user = req.user;
+    const admin = req.admin;
+    const farmer = req.farmer;
+    const body = req.body;
+    if (!user.wallet_id && !admin.wallet_id && !farmer.wallet_id && !body.token && !body.pin && !body.passphrase) return res.status(401).json({ msg: 'Unauthorized request!' });
+    if (user.wallet_id && body.passphrase && user.role){
+       await this.authenticatePin(req, res);
+       const updatedToken = await users.updateToken({wallet_id: user.wallet_id, role : user.role});
+       if (updatedToken.message === "valid" || updatedToken.message === "updated"){
+          updateToken.wallet_id = updatedToken.wallet_id;
+          updateToken.token = updatedToken.token;
+          updateToken.message = updatedToken.message;
+       }
+       return updateToken;
+    }
+    else if (admin.wallet_id && body.pin && admin.role) {
+      await this.authenticatePinAdmin(req, res);
+      const updatedToken = await users.updateToken({wallet_id: admin.wallet_id, role : admin.role});
+       if (updatedToken.wallet_id && updatedToken.token){
+          updateToken.wallet_id = updatedToken.wallet_id;
+          updateToken.token = updatedToken.token;
+          updateToken.message = updatedToken.message;
+       }
+      return updateToken;
+    } 
+   else if (farmer.wallet_id && body.token) {
+    const verifyToken = await farmers.verifyToken(body.token);
+    if (verifyToken.message === "valid"){
+        updateToken.wallet_id = verifyToken.wallet_id;
+        updateToken.token = verifyToken.token;
+        updateToken.message = verifyToken.message;
+        return updateToken;
+    }
+    else if (verifyToken.message === "error" || farmer.wallet_id !== verifyToken.wallet_id || farmer.address !== verifyToken.address) {
+      return res.status(403).json({ msg : 'invalid farmer token details' });
+    }
+    else {
+      let payload = {
+        farmer : {
+          wallet_id: farmer.wallet_id,
+          address : farmer.address
+        }
+      }
+      const token =  farmers.createToken(payload);
+      const expiry_date =  farmers.getExpiryDate(token.token);
+      await farmers.updateFarmerToken({address : farmer.address, token : token.token, expiry: expiry_date.data.exp});
+      updateToken.wallet_id = farmer.wallet_id;
+      updateToken.token = token;
+      updateToken.message = "renewed";
+      return updateToken;
+    }
+   }
+   else {
+     return res.status(404).json({ msg : 'invalid token refresh parameters' });
+   }  
+  } catch (err) {
+    console.error('Internal auth error in token refresh controller');
+    res.status(500).json({ msg: 'Internal refresh user token error' });
+  }
+}

@@ -103,7 +103,7 @@ const validateFarmerExists = async(req, res, next) => {
         }
         const token =  farmerModel.createToken(payload);
         const expiry_date =  farmerModel.getExpiryDate(token.token);
-        await farmerModel.updateFarmerToken({address : req.body.farmer, token : token.token, expiry: expiry_date.data.exp});
+        await farmerModel.updateFarmerToken({address : farmer, token : token.token, expiry: expiry_date.data.exp});
         req.farmer.wallet_id = farmers[0].wallet_id;
         req.farmer.address = farmers[0].address;
         //req.wallet_id = decoded.data.wallet_id;

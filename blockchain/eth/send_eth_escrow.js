@@ -190,7 +190,7 @@ router.post('/send/transfer', [
   check('to', 'Please include a destination address').isEthereumAddress().not().isEmpty(),
 ], validateToken, async(req, res, next) => {
   const response = await send_ether_to_escrow(req, res);
-  return res.status(response.status).send(response)
+  return res.status(response.status).send(response);
 });
 
 const check_eth_tx_status = async(req, res) => {

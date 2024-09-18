@@ -18,7 +18,7 @@ const farmerModel = require('../../server/psql/models/farmers');
 const walletModel = require('../../server/psql/models/wallet');
 const { check, validationResult } = require('express-validator');
 const {validateToken, validateAdmin} = require('../../server/psql/middleware/auth');
-const {authenticateUser, decryptPrivKey, authenticatePin} = require('../../server/psql/controllers/auth');
+const {authenticateUser, decryptPrivKey, authenticatePin, authenticatePinAdmin, authenticateAdmin} = require('../../server/psql/controllers/auth');
 
 const router  = express.Router();
 const {successResponse, errorResponse} = require('./libs/response');
@@ -44,21 +44,32 @@ const logStruct = (func, error) => {
     if (!walletExists && !walletExists.length) {
         return res.status(403).json({ msg : 'walletNotExists' });
       }
-
-    const auth_evm = await authenticateUser(req, res);
-
-    const path =`m/49'/1'/0'/0`; // we use  `m/49'/1'/0'/0` for testnet network
-    const hdPath =  require('./libs/path');
+    let auth_evm, data;
+    const adm = req.admin.role;
+    const usr = req.user.role;
+    if (usr !== 'admin' && adm !== 'admin'){
+      auth_evm = await authenticateUser(req, res);
+      data = req.user;
+    }
+    else {
+      auth_evm = await authenticateAdmin(req, res);
+      data = req.admin;
+    }
+    
     const wallet = {};
     const check_pin = await getUserPin(req, res);
-    if (check_pin.pin && check_pin.msg === 'PinSet'){
+    if (check_pin.pin && check_pin.msg === 'PinSet' && usr !== 'admin' && adm !== 'admin'){
           await authenticatePin(req, res);
     } 
+    if (check_pin.pin && check_pin.msg === 'PinSet' && adm === 'admin'){
+        await authenticatePinAdmin(req, res);
+     }
+
     const eth_address = decryptPrivKey(auth_evm);
   
     wallet.wallet_id = req.body.wallet_id;
     //wallet.mnemonic = CryptoJS.AES.encrypt(_mnemonic, pinHash(comb)).toString();
-    wallet.username = req.user.user;
+    wallet.username = data.user;
     //wallet.passphrase = bcrypt.hashSync(String(comb), saltRounds);
     //wallet.wif = cryptKey;
     wallet.index = 0;
@@ -68,12 +79,12 @@ const logStruct = (func, error) => {
     console.log(`
     Wallet generated:
      - Address  : ${eth_address.addr}, 
-     - user_name : ${req.user.user}
+     - user_name : ${usr_name}
          
     `)
 
     
-    const evmExists = await walletModel.checkEVM({wallet_id : req.user.wallet_id, address : wallet.address});
+    const evmExists = await walletModel.checkEVM({wallet_id : req.body.wallet_id, address : wallet.address});
     if (evmExists && evmExists.length) {
         return res.status(403).json({ msg : 'evmExists' });
       }
@@ -97,8 +108,18 @@ const logStruct = (func, error) => {
 
     router.post('/create/wallet', validateToken, [
       check('wallet_id', 'Wallet id is required').not().isEmpty(),
-      check('passphrase', 'Please include a passphrase').isNumeric().not().isEmpty(),
-      check('username', 'Username is required').not().isEmpty()
+      check('passphrase', 'Please include a passphrase').isNumeric().not().isEmpty()
+    ],  async(req, res, next) => {
+        console.log(req.body);
+        //const { username, wallet_id, mnemonic, passphrase, encrypted} = req.body
+        const wallet = await createETHTestCr(req, res);
+      
+        return res.status(wallet.status).send(wallet.data);
+    });
+
+    router.post('/create/admin', validateToken, validateAdmin, [
+      check('wallet_id', 'Wallet id is required').not().isEmpty(),
+      check('pin', 'Please include a pin').isNumeric().not().isEmpty()
     ],  async(req, res, next) => {
         console.log(req.body);
         //const { username, wallet_id, mnemonic, passphrase, encrypted} = req.body

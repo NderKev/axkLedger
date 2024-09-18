@@ -14,8 +14,8 @@ const autogenerate = require("./autogenerate");
 const walletModel = require('../../server/psql/models/wallet');
 const userModel = require('../../server/psql/models/users');
 const { check, validationResult } = require('express-validator');
-const {validateToken} = require('../../server/psql/middleware/auth');
-const {authenticateUser, getUserPin, authenticatePin} = require('../../server/psql/controllers/auth');
+const {validateToken, validateAdmin} = require('../../server/psql/middleware/auth');
+const {authenticateUser, getUserPin, authenticatePin, authenticateAdmin, authenticatePinAdmin} = require('../../server/psql/controllers/auth');
 //const createWalletTestUrl = "localhost:8000/axkledger/v1/api/wallet/wallet";
 const router  = express.Router();
 const {successResponse, errorResponse} = require('./lib/response');
@@ -35,9 +35,6 @@ if (!errors.isEmpty()) {
 try {
 const network = bitcoin.networks.testnet; // if we are using (testnet) then  we use networks.testnet 
 //const validInput = validateAuth(data);
-if (req.body.wallet_id !== req.user.wallet_id) {
-  return res.status(403).json({ msg : 'user wallet id mismatch' });
-}
 const userExists = await userModel.checkUserExists(req.user.wallet_id);
 if (!userExists && !userExists.length) {
   return res.status(403).json({ msg : 'user doesnt exist' });
@@ -47,12 +44,31 @@ const walletExists = await walletModel.checkWallet(req.user.wallet_id);
 if (walletExists && walletExists.length) {
     return res.status(403).json({ msg : 'walletExists' });
   }
+  let auth_btc, data;
+  const adm = req.admin.role;
+  const usr = req.user.role;
+  if (usr !== 'admin' && adm !== 'admin'){
+    auth_btc = await authenticateUser(req, res);
+    data.user = req.user.user;
+    data.pass = req.body.passphrase;
+  }
+  else {
+    auth_btc = await authenticateAdmin(req, res);
+    data.user = req.admin.user;
+    data.pass = req.body.pin;
+  }
+
 const check_pin = await getUserPin(req, res);
 if (check_pin.pin && check_pin.msg === 'PinSet'){
-     await authenticatePin(req, res);
+     if (usr !== 'admin' && adm !== 'admin'){
+      await authenticatePin(req, res);
+     }
+     else {
+      await authenticatePinAdmin(req, res)
+     }  
 }
-let _user = req.user.user;
-let _pass = req.body.passphrase;
+let _user = data.user;
+let _pass = data.pass;
 let _walletid = req.body.wallet_id;
 const str = _pass + _user;
 
@@ -110,40 +126,23 @@ return successResponse(201, wallet, 'walletCreated');
 }
 }
 
-/** const createWalletServer = async(data, token)=>{
-  try {
-    //let push_url = `${push}?token=${token}`
-    const config = {
-      method : 'post',
-      url : createWalletTestUrl,
-      headers: {
-        'x-auth-token' : token
-       },
-      data : data
-    }
-    let response = await axios(config);
-    return  successResponse(200, response.data);
-  } catch(error){
-   console.error('error -> ', logStruct('createWalletServer', error))
-   return errorResponse(error.status, error.message);
- }
-} **/
-
 router.post('/testnet', validateToken, [
   check('wallet_id', 'Wallet id is required').not().isEmpty(),
   check('passphrase', 'Please include a passphrase').isNumeric().not().isEmpty()
 ], async(req, res, next) => {
 
 const wallet =  await createBTCTest(req, res);
-//const token = req.body.token;
-
-//console.log(token + " : " + data.data);
-
-//const wallet = await walletController.createWallet(data.data);
 return res.status(wallet.status).send(wallet.data);
 });
 
-  
+router.post('/testnet/admin', validateToken, validateAdmin, [
+  check('wallet_id', 'Wallet id is required').not().isEmpty(),
+  check('pin', 'Please include a pin').isNumeric().not().isEmpty()
+], async(req, res, next) => {
+
+const wallet =  await createBTCTest(req, res);
+return res.status(wallet.status).send(wallet.data);
+});
 
 const createBTCMain = function(data){
   try{

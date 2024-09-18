@@ -24,6 +24,6 @@ module.exports = {
   SMTP_USER: process.env.SMTP_USER,
   SMTP_PW: process.env.SMTP_PW,
   INITIAL_BAL: 0,
-  FROM_NAME: '',
-  FROM_EMAIL: '',
+  FROM_NAME: 'Afrikabal',
+  FROM_EMAIL: process.env.SMTP_USER,
 };

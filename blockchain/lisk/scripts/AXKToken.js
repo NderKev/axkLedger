@@ -1821,9 +1821,9 @@ async function sendLisk(txData, fromAddress, privateKey) {
       );
         //const txData = tx.encodeABI();
         //const account = web3.eth.accounts.wallet.add(privateKey);
-        const txHash = await web3.eth.sendTransaction(signedTx);
-        console.log("tx Hash :" + txHash);
-        return txHash;
+        const txHash = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
+        console.log("tx Hash :" + txHash.transactionHash);
+        return txHash.transactionHash;
     } catch (error) {
         console.error('Transaction error:', error);
     }
@@ -2092,6 +2092,7 @@ async function transferLisk(data) {
   //bal_eth 
   const bal_lisk_wei = Number(bal_lisk);
   console.log(bal_lisk_wei);
+  const db_amount = Number(data.amount) * Math.pow(10, 6);
   //let bal_wei = bal_lisk_wei * Math.pow(10, -18);
   const lisk_wei = web3.utils.toWei(data.amount, "ether");
   const lisk_amount = Number(lisk_wei);
@@ -2107,7 +2108,7 @@ async function transferLisk(data) {
   const sendTx = await sendLisk(tx, data.from, data.priv_key);
   const txObj = {
     txHash : sendTx,
-    amount : lisk_amount
+    amount : db_amount
   }
   return txObj;
 }

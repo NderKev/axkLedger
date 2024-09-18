@@ -4,6 +4,8 @@ const { validationResult } = require('express-validator');
 const { WelcomeMail } = require('../../mails');
 const users = require('../models/users');
 const sendEmail = require('../../helpers/sendMail');
+const nodemailer = require('nodemailer');
+const config = require('../config');
 
 
 exports.generateUniqueId = function(length){
@@ -71,6 +73,99 @@ exports.generateUniqueId = function(length){
     } catch (error) {
         console.error(error.message);
         return res.status(500).json({ msg: 'Internal server error create user' });
+    }
+  };
+
+  exports.sendVerification = async (reqData) => {
+    try {
+     //let testAccount = await nodemailer.createTestAccount();
+      const {token , user, email} = reqData;
+      let transporter = nodemailer.createTransport({
+        host: config.SMTP_HOST,
+        port: config.SMTP_PORT,
+        secure: true, // true for 465, false for other ports
+        auth: {
+          user: config.SMTP_USER, // generated ethereal user
+          pass: config.SMTP_PW, // generated ethereal password
+        },
+      });
+      const AUTH_URL = `http://agro-africa.io/agroAfrica/v1/user/verify`;
+      const link = `${AUTH_URL}/${email}/${token}`;
+      console.log(link);
+      // send mail with defined transport object
+      let info = await transporter.sendMail({
+        from: `${config.FROM_NAME}👻 <${config.FROM_EMAIL}>`,//'"Verification 👻" <no-reply@doeremi.com>', // sender address
+        to: email, //"nostrakelvin@gmail.com" // list of receivers
+        subject: "Please Verify Your Afrikabal Account ✔", // Subject line
+        text: "Hello" + user , // plain text body
+        html: "Hello" + user +",<br> You've successfully created and afrikabal account from this email.<br><a href="+link+">Click here to verify your email</a>", // html body
+      });
+      console.log("Message sent: %s", info.messageId);
+      // Message sent: <b658f8ca-6296-ccf4-8306-87d57a0b4321@example.com>
+  
+      // Preview only available when sending through an Ethereal account
+      console.log("Preview URL: %s", nodemailer.getTestMessageUrl(info));
+      // Preview URL: https://ethereal.email/message/WaQKMgKddxQDoou...
+      return res.status(200).json({info , msg : 'verification sent'});
+      //return successResponse(200, info, 'sent')
+    } catch (error) {
+      //console.error('error -> ', logStruct('sendVerfication', error))
+      //return errorResponse(error.status, error.message);
+      console.error(error.message);
+      return res.status(500).json({ msg: 'Internal server error send email verification user' })
+    }
+  };
+  
+  exports.resetPassword = async (reqData) => {
+    try {
+     //let testAccount = await nodemailer.createTestAccount();
+     const userExists = await users.getUserDetailsByEmail(reqData.email);
+      if (userExists && userExists.length) {
+      //const {user, email} = reqData;
+      let user = config.SMTP_USER;
+      let user_id = userExists[0].id;
+      let token = await users.genVerToken(reqData.email);
+      await users.createEmailToken(token);
+       
+      let transporter = nodemailer.createTransport({
+        host: config.SMTP_HOST,
+        port: config.SMTP_PORT,
+        secure: true, // true for 465, false for other ports
+        //service: config.SMTP_HOST,
+        auth: {
+          user: config.SMTP_USER, // generated ethereal user
+          pass: config.SMTP_PW, // generated ethereal password
+        },
+      });
+      const AUTH_URL = `http://localhost:3000/reset_password`;//142.93.194.112/doeremi/v1/btc/usr
+      const link = `${AUTH_URL}/${token.token}`;
+      console.log(link);
+      // send mail with defined transport object
+      let info = await transporter.sendMail({
+        from: `"Support 👻" + <${config.FROM_EMAIL}>`, // sender address
+        to: reqData.email, //"nostrakelvin@gmail.com" // list of receivers
+        subject: "Please Reset Your Password For Afrikabal Account ✔", // Subject line
+        text: "Hello " + token.user , // plain text body
+        html: "Hello " + token.user +",<br> Please Click on the link to reset your doeremi account password.<br><a href="+link+">Click here to reset your password</a>", // html body
+      });
+      console.log("Message sent: %s", info.messageId);
+      // Message sent: <b658f8ca-6296-ccf4-8306-87d57a0b4321@example.com>
+  
+      // Preview only available when sending through an Ethereal account
+      console.log("Preview URL: %s", nodemailer.getTestMessageUrl(info));
+      // Preview URL: https://ethereal.email/message/WaQKMgKddxQDoou...
+      //return successResponse(200, info, 'sent')
+      return res.status(200).json({info , msg : 'verification sent'});
+    }
+    else {
+       return res.status(400).json({ msg: 'user_not_exists' })
+      //return errorResponse(400, "invalid user", {message : "user_not_exists"});
+    }
+    } catch (error) {
+      //console.error('error -> ', logStruct('resetPassword', error))
+      //return errorResponse(error.status, error.message);
+      console.error(error.message);
+      return res.status(500).json({ msg: 'Internal server error reset password user' })
     }
   };
 
