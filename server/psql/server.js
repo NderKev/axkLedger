@@ -1,41 +1,27 @@
+'use strict';
 const path = require('path');
-const express = require('express');
-const configureMiddleware = require('./middleware');
 const configureRoutes = require('./routes');
-const config = require('../config')
+const config = require('./config')
+const http = require('http');
+const port = config.PORT || '8000';
 
-// Connect and get reference to mongodb instance
-/** let db;
+const app = require('./app');
 
-(async function () {
-  db = await connectDB();
-})(); **/
-
-// Init express app
-const app = express();
-
-// Config Express-Middleware
-configureMiddleware(app);
-
-// Set-up static asset path
-//app.use(express.static(path.join('server', 'public')));
-
-// Set-up Routes
 configureRoutes(app);
+app.set('port', port);
 
-// Start server and listen for connections
-const server = app.listen(config.PORT, () => {
+const server = http.createServer(app);
+server.listen(port, () => {
   console.log(
-    `Server is running in ${config.NODE_ENV} mode and is listening on port ${config.PORT}...`,
+    `Server is running in ${config.NODE_ENV} mode and is listening on port ${port}...`,
   );
 });
 
-
-// Error handling - close server
-process.on('unhandledRejection', (err) => {
-  //db.disconnect();
-  console.error(`Error: ${err.message}`);
-  server.close(() => {
-    process.exit(1);
-  });
+server.on('error', (error) => {
+  console.error('error found', error);
 });
+
+server.on('listening', () => {
+  console.log('Blockchain Server running at :', port);
+});
+

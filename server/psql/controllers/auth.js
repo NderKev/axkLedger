@@ -210,65 +210,120 @@ exports.login = async (req, res) => {
 }
 
   exports.refreshToken = async(req, res) => {
-    let updateToken = {};
-    try{
-    const user = req.user;
-    const admin = req.admin;
-    const farmer = req.farmer;
-    const body = req.body;
-    if (!user.wallet_id && !admin.wallet_id && !farmer.wallet_id && !body.token && !body.pin && !body.passphrase) return res.status(401).json({ msg: 'Unauthorized request!' });
-    if (user.wallet_id && body.passphrase && user.role){
+    try {
+    let data = {}, updateToken = {};
+    const user = req.user.token;
+    const admin = req.admin.token;
+    const farmer = req.farmer.token;
+    const {pin, passphrase} = req.body;
+    if (!user && !admin && !farmer && !pin && !passphrase) return res.status(401).json({ msg: 'Unauthorized request!' });
+    if (user && passphrase !== null){
+      data = req.user
+      updateToken = await users.verifyToken(user);
+      if (updateToken.message === 'valid'){
+        return updateToken;
+      }
+      else if (updateToken.message === "error" || data.wallet_id !== updateToken.wallet_id) {
+        return res.status(403).json({ msg : 'invalid buyer token details' });
+      }
+      else {
        await this.authenticatePin(req, res);
-       const updatedToken = await users.updateToken({wallet_id: user.wallet_id, role : user.role});
-       if (updatedToken.message === "valid" || updatedToken.message === "updated"){
+       const updatedToken = await users.updateToken({wallet_id: data.wallet_id, role : data.role});
+       if (updatedToken.message === "created" || updatedToken.message === "updated"){
           updateToken.wallet_id = updatedToken.wallet_id;
           updateToken.token = updatedToken.token;
           updateToken.message = updatedToken.message;
        }
        return updateToken;
+      }
     }
-    else if (admin.wallet_id && body.pin && admin.role) {
+    else if (admin && pin !== null ){
+      data = req.admin;
+      updateToken = await users.verifyToken(admin);
+      if (updateToken.message === 'valid'){
+        return updateToken;
+      }
+      else if (updateToken.message === "error" || data.wallet_id !== updateToken.wallet_id) {
+        return res.status(403).json({ msg : 'invalid admin token details' });
+      }
+      else {
       await this.authenticatePinAdmin(req, res);
       const updatedToken = await users.updateToken({wallet_id: admin.wallet_id, role : admin.role});
-       if (updatedToken.wallet_id && updatedToken.token){
+       if (updatedToken.message === "created" || updatedToken.message === "updated"){
           updateToken.wallet_id = updatedToken.wallet_id;
           updateToken.token = updatedToken.token;
           updateToken.message = updatedToken.message;
        }
-      return updateToken;
-    } 
-   else if (farmer.wallet_id && body.token) {
-    const verifyToken = await farmers.verifyToken(body.token);
-    if (verifyToken.message === "valid"){
-        updateToken.wallet_id = verifyToken.wallet_id;
-        updateToken.token = verifyToken.token;
-        updateToken.message = verifyToken.message;
-        return updateToken;
-    }
-    else if (verifyToken.message === "error" || farmer.wallet_id !== verifyToken.wallet_id || farmer.address !== verifyToken.address) {
-      return res.status(403).json({ msg : 'invalid farmer token details' });
+       return updateToken;
+      }
     }
     else {
-      let payload = {
-        farmer : {
-          wallet_id: farmer.wallet_id,
-          address : farmer.address
-        }
+      data = req.farmer;
+      updateToken = await farmers.verifyToken(farmer);
+      if (updateToken.message === 'valid'){
+        return updateToken;
       }
-      const token =  farmers.createToken(payload);
-      const expiry_date =  farmers.getExpiryDate(token.token);
-      await farmers.updateFarmerToken({address : farmer.address, token : token.token, expiry: expiry_date.data.exp});
-      updateToken.wallet_id = farmer.wallet_id;
-      updateToken.token = token;
-      updateToken.message = "renewed";
-      return updateToken;
-    }
-   }
-   else {
-     return res.status(404).json({ msg : 'invalid token refresh parameters' });
-   }  
+      else if (updateToken.message === "error" || data.wallet_id !== updateToken.wallet_id || data.address !== updateToken.address) {
+        return res.status(403).json({ msg : 'invalid farmer token details' });
+      }
+      else {
+        let payload = {
+          farmer : {
+            wallet_id: data.wallet_id,
+            address : data.address
+          }
+        }
+        const token =  farmers.createToken(payload);
+        const expiry_date =  farmers.getExpiryDate(token.token);
+        await farmers.updateFarmerToken({address : data.address, token : token.token, expiry: expiry_date.data.exp});
+        updateToken.wallet_id = data.wallet_id;
+        updateToken.token = token;
+        updateToken.message = "renewed";
+        return updateToken;
+      }
+    } 
   } catch (err) {
-    console.error('Internal auth error in token refresh controller');
+    console.error(err.message + ': Internal auth error in token refresh controller');
     res.status(500).json({ msg: 'Internal refresh user token error' });
   }
 }
+
+exports.updateUserRole = async (req, res) => {
+  try {
+    const user = await users.updateUserRole(req.body);
+    return res.status(200).json(user);
+  } catch (err) {
+    console.error(err.message);
+    return res.status(500).send('Internal server error update user roles');
+  }
+};
+
+exports.updateUserPermission = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  const { wallet_id, user_role, role_id } = req.body;
+  try {
+    const userExists = await users.checkUserExists(wallet_id);
+    if (!userExists && !userExists.length) {
+      return res.status(403).json({ msg : 'userNotExists' });
+    }
+    if (userExists[0].id !== 1){
+      return res.status(404).json({ msg : 'forbidden Request' });
+    }
+
+    let input = {
+      role_id : role_id,
+      wallet_id : wallet_id
+    }
+    await users.updatePermission(input);
+
+    return res.json({input , msg : ' user permission updated'});
+    
+  } catch (error) {
+      console.error(error.message);
+      return res.status(500).json({ msg: 'Internal server error update user permission' });
+  }
+};

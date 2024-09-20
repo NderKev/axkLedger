@@ -16,10 +16,13 @@ const validateToken = (req, res, next) => {
         const role = decoded.data.role;
         if (role !== "null" && role === "admin"){
           req.admin = decoded.data; 
+          req.admin.token = token;
         }
         else {
           req.user = decoded.data;
+          req.user.token = token;
         }
+        //console.log(req.user.token)
         next();
       }
     });
@@ -32,7 +35,7 @@ const validateToken = (req, res, next) => {
 const validateAdmin = (req, res, next) => {
   const token = req.header('x-auth-token');
   const admin =  req.admin;
-  if (!token || !admin) return res.status(401).json({ msg: 'Unauthorized request!' });
+  if (!token || !admin ) return res.status(401).json({ msg: 'Unauthorized request!' });
   try {
     jwt.verify(token, config.JWT_SECRET, (err, decoded) => {
       if (err) {
@@ -41,10 +44,8 @@ const validateAdmin = (req, res, next) => {
       } else {
          //req.admin = decoded.data;
         if (decoded.data.wallet_id !== admin.wallet_id ){
-          res.status(401).json({ msg: 'Only Admin allowed!' });
+          res.status(401).json({ msg: 'Only Admin allowed!'});
         }
-        //req.wallet_id = decoded.data.wallet_id;
-        //req.token = token;
         next();
       }
     });
@@ -65,7 +66,7 @@ const validateFarmer = (req, res, next) => {
         console.error(err);
       } else {
          req.farmer = decoded.farmer;
-        //req.wallet_id = decoded.data.wallet_id;
+         req.farmer.token = token;
         //req.token = token;
         next();
       }
@@ -106,7 +107,7 @@ const validateFarmerExists = async(req, res, next) => {
         await farmerModel.updateFarmerToken({address : farmer, token : token.token, expiry: expiry_date.data.exp});
         req.farmer.wallet_id = farmers[0].wallet_id;
         req.farmer.address = farmers[0].address;
-        //req.wallet_id = decoded.data.wallet_id;
+        req.farmer.token = token.token;
         //req.token = token;
         next();
       } catch (err) {

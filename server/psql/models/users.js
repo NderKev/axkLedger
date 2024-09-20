@@ -98,7 +98,8 @@ exports.setPassword = async (data) => {
  exports.fetchUserName = async (wallet_id) => {
    const query = db.read.select('axk_users.name')
    .from('axk_users')
-   .where('wallet_id', '=', wallet_id);
+   .where('wallet_id', '=', wallet_id)
+   .orWhere('email', '=', wallet_id);
    return query;
  };
 
@@ -115,8 +116,8 @@ exports.updateProfile = async (data) => {
     .update({
       name : data.name,
       email : data.email,
-      latitude : data.latitude,
-      longitude : data.logitude,
+      latitude : data.latitude || null,
+      longitude : data.logitude || null,
       updated_at: moment().format('YYYY-MM-DD HH:mm:ss')
     });
   console.info("query -->", query.toQuery())
@@ -346,18 +347,20 @@ exports.createEmailToken = async (data) => {
   return query;
 };
 
-exports.verifyEmailToken = async (data) => {
+exports.verifyEmailTokenDb = async (data) => {
   const query = db.write('axk_email_token')
   .update({
      used : 1,
      updated_at : moment().format('YYYY-MM-DD HH:mm:ss')
    })
-  .where('email', '=', data.wallet_id)
+  .where('email', '=', data.email)
   .where('token', '=', data.token)
   .where('used', '=', 0);
   console.info("query -->", query.toQuery())
   return query;
 };
+
+
 
  exports.genAuthToken = function (user, pass, role){
    try{
@@ -609,3 +612,60 @@ catch(err){
 }
 }
 
+exports.verifyEmailToken = async (token) => {
+  try{
+   var valid = false;
+   var resp = {};
+  jwt.verify(token, config.JWT_SECRET, (err, decoded) => {
+    if(err) {
+       resp.token = token;
+       resp.expiry = 0;
+       resp.valid = valid;
+       resp.email = token;
+       resp.wallet_id = token;
+       resp.message = "error";
+       return resp;
+    }
+    else{
+    //tokenVer.
+    var data = decoded;
+    console.log(data);
+    var expiration = data.exp;//getExpDate(token);
+    //await sleep(1000);
+    let _email = data.data.email;
+    let _wallet_id = data.data.wallet_id;
+    var timeNow = Math.floor(Date.now() / 1000);
+    if (expiration <= timeNow){
+      valid = true;
+      resp.token = token;
+      resp.expiry = expiration;
+      resp.valid = valid;
+      resp.email = _email;
+      resp.wallet_id = _wallet_id;
+      resp.message = "expired";
+    }
+    else {
+      valid = true;
+      resp.token = token;
+      resp.expiry = expiration;
+      resp.valid = valid;
+      resp.email = _email;
+      resp.wallet_id = _wallet_id;
+      resp.message = "valid";
+    }
+
+  }
+})
+return resp;
+//console.log(tokenVer);
+}
+catch(err){
+  resp.token = token;
+  resp.expiry = 0;
+  resp.valid = valid;
+  resp.email = token;
+  resp.wallet_id = token;
+  resp.message = "error";
+  return resp;
+}
+}

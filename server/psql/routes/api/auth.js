@@ -3,7 +3,7 @@ const router = express.Router();
 const { check } = require('express-validator');
 const {validateToken, validateFarmerExists} = require('../../middleware/auth');
 const {createFarmerKey} = require('../../controllers/farmers');
-const { getUser, login, createUserPin, getUserPin, refreshToken} = require('../../controllers/auth');
+const { getUser, login, createUserPin, getUserPin, refreshToken, updateUserPermission} = require('../../controllers/auth');
 //const { createUserRole } = require('../../models/users');
 
 router.get('/', validateToken, getUser);
@@ -46,6 +46,17 @@ router.post(
   ],
   validateToken,
   refreshToken,
+);
+
+router.post(
+  '/permission',
+  [
+    check('wallet_id', 'Wallet ID is required').not().isEmpty(),
+    check('role_id', 'Please include a valid role').isInt().not().isEmpty(),
+    check('user_role', 'User Role is required').not().isEmpty(),
+  ],
+  validateToken,
+  updateUserPermission,
 );
 
 module.exports = router;

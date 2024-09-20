@@ -8,6 +8,7 @@ const nodemailer = require('nodemailer');
 const config = require('../config');
 
 
+
 exports.generateUniqueId = function(length){
     const characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let id = '';
@@ -68,7 +69,13 @@ exports.generateUniqueId = function(length){
       } catch (error) {
         console.log(error);
       } 
-      return res.json({token , msg : 'user registered'});
+
+      const resp_user = {
+        user : email,
+        token : token
+      };
+
+      return res.json({resp_user , msg : 'user registered'});
       
     } catch (error) {
         console.error(error.message);
@@ -76,10 +83,12 @@ exports.generateUniqueId = function(length){
     }
   };
 
-  exports.sendVerification = async (reqData) => {
+  exports.sendVerification = async (req, res) => {
     try {
      //let testAccount = await nodemailer.createTestAccount();
-      const {token , user, email} = reqData;
+      const {token , email} = req.body;
+      const fetch_user = await users.fetchUserName(email);
+      const user = fetch_user[0].name;
       let transporter = nodemailer.createTransport({
         host: config.SMTP_HOST,
         port: config.SMTP_PORT,
@@ -89,8 +98,8 @@ exports.generateUniqueId = function(length){
           pass: config.SMTP_PW, // generated ethereal password
         },
       });
-      const AUTH_URL = `http://agro-africa.io/agroAfrica/v1/user/verify`;
-      const link = `${AUTH_URL}/${email}/${token}`;
+      const AUTH_URL = `localhost:8000/axkledger/v1/api/users/verify`;
+      const link = `${AUTH_URL}/${token}`;
       console.log(link);
       // send mail with defined transport object
       let info = await transporter.sendMail({
@@ -116,15 +125,15 @@ exports.generateUniqueId = function(length){
     }
   };
   
-  exports.resetPassword = async (reqData) => {
+  exports.sendResetEmailToken = async (req, res) => {
     try {
      //let testAccount = await nodemailer.createTestAccount();
-     const userExists = await users.getUserDetailsByEmail(reqData.email);
+     const userExists = await users.checkUserExists(req.body.email);
       if (userExists && userExists.length) {
       //const {user, email} = reqData;
       let user = config.SMTP_USER;
       let user_id = userExists[0].id;
-      let token = await users.genVerToken(reqData.email);
+      let token = await users.genVerToken(req.body.email);
       await users.createEmailToken(token);
        
       let transporter = nodemailer.createTransport({
@@ -137,13 +146,13 @@ exports.generateUniqueId = function(length){
           pass: config.SMTP_PW, // generated ethereal password
         },
       });
-      const AUTH_URL = `http://localhost:3000/reset_password`;//142.93.194.112/doeremi/v1/btc/usr
+      const AUTH_URL = `localhost:8000/axkledger/v1/api/users/forgot_password`;//142.93.194.112/doeremi/v1/btc/usr
       const link = `${AUTH_URL}/${token.token}`;
       console.log(link);
       // send mail with defined transport object
       let info = await transporter.sendMail({
         from: `"Support 👻" + <${config.FROM_EMAIL}>`, // sender address
-        to: reqData.email, //"nostrakelvin@gmail.com" // list of receivers
+        to: req.body.email, //"nostrakelvin@gmail.com" // list of receivers
         subject: "Please Reset Your Password For Afrikabal Account ✔", // Subject line
         text: "Hello " + token.user , // plain text body
         html: "Hello " + token.user +",<br> Please Click on the link to reset your doeremi account password.<br><a href="+link+">Click here to reset your password</a>", // html body
@@ -155,23 +164,99 @@ exports.generateUniqueId = function(length){
       console.log("Preview URL: %s", nodemailer.getTestMessageUrl(info));
       // Preview URL: https://ethereal.email/message/WaQKMgKddxQDoou...
       //return successResponse(200, info, 'sent')
+      await users.resetPassword({email : req.body.email, token : token.token});
       return res.status(200).json({info , msg : 'verification sent'});
     }
     else {
-       return res.status(400).json({ msg: 'user_not_exists' })
-      //return errorResponse(400, "invalid user", {message : "user_not_exists"});
+       return res.status(400).json({ msg: 'user_not_exists' });
     }
     } catch (error) {
-      //console.error('error -> ', logStruct('resetPassword', error))
-      //return errorResponse(error.status, error.message);
       console.error(error.message);
       return res.status(500).json({ msg: 'Internal server error reset password user' })
     }
   };
 
+  exports.updateProfile = async (req, res) => {
+    try {
+      const userExists = await users.checkUserExists(req.user.wallet_id);
+      if (userExists && userExists.length) {
+        const response = await users.updateProfile(req.body);
+        return  res.status(204).json({ response, msg: 'profileUpdated'}); 
+      }
+      else{
+      return res.status(403).json({ msg: 'userNotRegistered' });
+      }
+    } catch (error) {
+      console.error(error.message);
+      return res.status(500).json({ msg: error.message });
+    }
+  };
   
+  exports.updatePassword = async (req, res) => {
+    try {
+      const userExists = await users.checkUserExists(req.body.email);
+      if (userExists && userExists.length) {
+        const response = await users.updatePassword(req.body);
+        return  res.status(204).json({ response, msg: 'passwordUpdated'}); 
+      }
+      else{
+      return res.status(403).json({ msg: 'userNotRegistered' });
+      }
+    } catch (error) {
+      console.error(error.message);
+      return res.status(500).json({ msg: error.message });
+    }
+  };
 
 
+  exports.verifyToken = async(req, res) => {
+    try {
+      var data = {}, token = {}; 
+      const response = await users.verifyEmailToken(req.params.token);
+      token.token = response.token;
+      data.email = response.email;
+      token.email = response.email;
+      data.verified = 1;
+      token.used = 1;
+      await users.verifyEmailTokenDb(token);
+      await users.verifyEmail(data);
+      return res.status(202).json({ response, msg: 'verified'}); 
+  } catch (error) {
+      console.error(error.message);
+      return res.status(500).json({ msg: error.message });
+    }
+  };
+  
+  exports.verifyResetToken = async(req, res) => {
+    try {
+      const response = await users.verifyEmailToken(req.params.token);
+      let data = {
+        email: response.email,
+        token : response.token
+      }
+      req.body.email = response.email;
+      await users.verifyEmailTokenDb(data);
+      return res.status(202).json({ response, msg: 'verified'}); 
+  } catch (error) {
+      console.error(error.message);
+      return res.status(500).json({ msg: error.message });
+    }
+  };
 
 
+  exports.resetPassword = async (req, res) => {
+    try {
+      const userExists = await users.checkUserExists(req.body.email);
+      if (userExists && userExists.length) {
+        const response = await users.setPassword({email : req.body.email, token : req.params.token, password : req.body.password});
+        return  res.status(204).json({ response, msg: 'passwordReset Success'}); 
+      }
+      else{
+      return res.status(403).json({ msg: 'userNotRegistered' });
+      }
+    } catch (error) {
+      console.error(error.message);
+      return res.status(500).json({ msg: error.message });
+    }
+  };
   
