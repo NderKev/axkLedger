@@ -1,40 +1,37 @@
 const express = require('express');
 const router = express.Router();
 const { check } = require('express-validator');
-const { createUser, createUserPin, getUserPin, updateProfile, updatePassword, verifyResetToken, verifyToken, sendResetEmailToken, sendVerification, resetPassword} = require('../../controllers/users');
+const userController = require('../../controllers/users');
 const { validateToken } = require('../../middleware/auth');
-//const { resetPassword } = require('../../models/users');
 
+router.get('/profile', validateToken, userController.getUserProfile);
 
 router.post(
   '/',
   [
-   // check('name', 'Name is required').not().isEmpty(),
     check('email', 'Please include a valid email').isEmail(),
     check(
       'password',
-      'Please enter a password with 6 or more characters',
-    ).isLength({ min: 6 }),
+      'Please enter a password with 8 or more characters',
+    ).isLength({ min: 8 }),
     check('role', 'User role is required').isString().not().isEmpty(),
   ],
-  createUser,
+  userController.createUser,
 );
 
 router.post(
   '/profile',
   [
-   // check('name', 'Name is required').not().isEmpty(),
     check('email', 'Please include a valid email').isEmail(),
     check('name', 'User name is required').isString().not().isEmpty(),
   ],
   validateToken,
-  updateProfile,
+  userController.updateProfile,
 );
 
 router.post(
   '/password',
   [
-   // check('name', 'Name is required').not().isEmpty(),
     check('email', 'Please include a valid email').isEmail(),
     check(
       'password',
@@ -43,16 +40,33 @@ router.post(
     ).isLength({ min: 12 }).isAlphanumeric(),
   ],
   validateToken,
-  updatePassword,
+  userController.updatePassword,
+);
+
+router.post(
+  '/change',
+  [
+    check('email', 'Please include a valid email').isEmail(),
+    check(
+      'password',
+      'Please enter a password with 6 or more characters',
+    ).isLength({ min: 8 }),
+    check(
+      'new_password',
+      'Please enter a password with 12 or more characters',
+      'Password must contain alphabets and numbers',
+    ).isLength({ min: 12 }).isAlphanumeric(),
+  ],
+  validateToken,
+  userController.changePassword,
 );
 
 router.post(
   '/forgot_password',
   [
-   // check('name', 'Name is required').not().isEmpty(),
     check('email', 'Please include a valid email').isEmail(),
   ],
-  sendResetEmailToken,
+  userController.sendResetEmailToken,
 );
 
 router.post(
@@ -67,8 +81,8 @@ router.post(
     ).isLength({ min: 12 }).isAlphanumeric(),
     check('token', 'Reset token is required').isJWT().not().isEmpty(),
   ],
-  verifyResetToken,
-  resetPassword
+  userController.verifyResetToken,
+  userController.resetPassword
 );
 
 router.post(
@@ -77,7 +91,7 @@ router.post(
     check('token', 'token is required').isJWT().not().isEmpty(),
     check('email', 'Please include a valid email').isEmail(),
   ],
-  sendVerification,
+  userController.sendVerification,
 );
 
 
@@ -86,8 +100,9 @@ router.get(
   [
     check('token', 'token is required').isJWT().not().isEmpty(),
   ],
-  verifyToken,
+  userController.verifyToken,
 );
+
 
 
 

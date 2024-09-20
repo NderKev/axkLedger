@@ -16,7 +16,6 @@ exports.createAdminUser = async (req, res) => {
     const { email, password, role } = req.body;
     const nameMatch = email.match(/^([^@]*)@/);
     const name = nameMatch ? nameMatch[1] : null;
-    //req.body.name = name;
     console.log(name);
     const wallet_id  = userController.generateUniqueId(32);
     console.log(wallet_id);
@@ -50,12 +49,16 @@ exports.createAdminUser = async (req, res) => {
       const token =  await users.genToken(input);
       await users.createUserToken(token);
       //const user_name = await users.fetchUserName(wallet_id);
-      /** try {
+       try {
         await sendEmail(email, WelcomeMail(name));
       } catch (error) {
         console.log(error);
-      } **/
-      return res.json({token , msg : 'admin user registered'});
+      } 
+        const resp_adm = {
+          user : email,
+          token : token
+        };
+      return res.json({resp_adm , msg : 'admin user registered'});
       
     } catch (error) {
         console.error(error.message);
@@ -79,14 +82,6 @@ exports.createAdminUser = async (req, res) => {
       if (user_role === "admin" || role_id == 1){
         return res.status(404).json({ msg : 'forbidden Request' });
       }
-     /** if (wallet_id !== req.user.wallet_id) {
-        return res.status(403).json({ msg : 'user wallet id mismatch' });
-      } **/
-      
-      /** const checkRole = await users.checkUserRole(user_role);
-      if (!checkRole || !checkRole.length){
-      await users.createUserRole({role : user_role});
-      } **/
 
       let input = {
         role_id : role_id,
@@ -153,9 +148,9 @@ exports.createAdminUser = async (req, res) => {
 
   exports.createUserRole = async (req, res) => {
     try {
-      //const checkRole = await users.checkUserRole(req.body.role);
-      if (checkRole || checkRole.length){
-        return res.status(403).json({ msg : 'userRoleExists' });
+      const role = req.body.role;
+      if (role !== 'admin' && role !== 'buyer' && role !== 'buyer'){
+        return res.status(403).json({ msg : 'userRoleInvalid' });
         }
       const user = await users.createUserRole(req.body.role);
       return res.status(200).json(user);
@@ -168,10 +163,6 @@ exports.createAdminUser = async (req, res) => {
 
   exports.updateUserRole = async (req, res) => {
     try {
-      /** const checkRole = await users.checkUserRole(req.body.role);
-      if (checkRole || checkRole.length){
-        return res.status(403).json({ msg : 'userRoleExists' });
-        } **/
       const user = await users.updateUserRole(req.body);
       return res.status(200).json(user);
     } catch (err) {

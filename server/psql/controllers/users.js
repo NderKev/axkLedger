@@ -9,6 +9,7 @@ const config = require('../config');
 
 
 
+
 exports.generateUniqueId = function(length){
     const characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let id = '';
@@ -196,7 +197,9 @@ exports.generateUniqueId = function(length){
     try {
       const userExists = await users.checkUserExists(req.body.email);
       if (userExists && userExists.length) {
-        const response = await users.updatePassword(req.body);
+        const salt = await bcrypt.genSalt(10);
+        const _password = bcrypt.hashSync(String(req.body.password), salt);
+        const response = await users.updatePassword({email: req.body.email, password: _password});
         return  res.status(204).json({ response, msg: 'passwordUpdated'}); 
       }
       else{
@@ -248,7 +251,9 @@ exports.generateUniqueId = function(length){
     try {
       const userExists = await users.checkUserExists(req.body.email);
       if (userExists && userExists.length) {
-        const response = await users.setPassword({email : req.body.email, token : req.params.token, password : req.body.password});
+        const _salt = await bcrypt.genSalt(10);
+        const new_pwd = bcrypt.hashSync(String(req.body.password), _salt);
+        const response = await users.setPassword({email : req.body.email, token : req.params.token, password : new_pwd});
         return  res.status(204).json({ response, msg: 'passwordReset Success'}); 
       }
       else{
@@ -260,3 +265,45 @@ exports.generateUniqueId = function(length){
     }
   };
   
+
+  exports.changePassword = async (req, res) => {
+    try {
+      const userExists = await users.checkUserExists(req.user.wallet_id);
+      if (userExists && userExists.length) {
+        const curr_pwd = req.body.password;
+        const old_pwd = await users.fetchUserPassword(req.user.wallet_id);
+        let new_pwd = req.body.new_password;
+        const isMatch = await bcrypt.compare(String(curr_pwd ), old_pwd[0].password);
+        if (!isMatch) {
+        return res.status(400).json({ errors: [{ msg: 'Incorrect current password' }] });
+        }
+        const isUnique = await bcrypt.compare(String(new_pwd ), old_pwd[0].password);
+        if (isUnique) {
+          return res.status(400).json({ errors: [{ msg: 'New password is not unique' }] });
+        }
+        const _salt = await bcrypt.genSalt(10);
+        new_pwd = bcrypt.hashSync(String(new_pwd), _salt);
+        const response = await users.changePassword({wallet_id : req.user.wallet_id, password : new_pwd});
+        return  res.status(204).json({ response, msg: 'passwordChange Success'}); 
+      }
+      else{
+      return res.status(403).json({ msg: 'userNotRegistered' });
+      }
+    } catch (error) {
+      console.error(error.message);
+      return res.status(500).json({ msg: error.message });
+    }
+  };
+
+  exports.getUserProfile = async (req, res) => {
+    try {
+      const wallet_id  = req.user.wallet_id;
+      console.log(wallet_id);
+      const profile = await users.fetchUserProfile(wallet_id);
+      return res.status(200).json(profile);
+    } catch (err) {
+      console.error(err.message);
+      return res.status(500).send('Internal server error get user profile');
+    }
+  };
+

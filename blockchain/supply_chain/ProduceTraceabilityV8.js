@@ -173,7 +173,23 @@ async function getConsignmentHash(data) {
     return hash;
 }
 
+// Function to get total number of registered farmers
+async function getFarmerCount() {
+    const count = await ProduceTraceabilityV8Contract.methods.getFarmerCount().call();
+    return count;
+}
 
+// Function to get total number of farm produces added
+async function getProduceCount() {
+    const produces = await ProduceTraceabilityV8Contract.methods.getProduceCount().call();
+    return produces;
+}
+
+// Function to get total number of farm produces consignments sold
+async function getProduceSaleCount() {
+    const sales = await ProduceTraceabilityV8Contract.methods.getProduceSaleCount().call();
+    return sales;
+}
 
 // Function to get current produce consignment index
 async function currentconsignment(data) {
@@ -198,6 +214,25 @@ async function productdata(data) {
     return d_t;
 }
 
+// Function to get registered farmer address array data by index
+async function FarmerAddresses(data) {
+    const frm_array = await ProduceTraceabilityV8Contract.methods.FarmerAddresses(data).call();
+    return frm_array;
+}
+
+// Function to get registered farmer produces array data by index
+async function FarmProduces(data) {
+    const prod_array = await ProduceTraceabilityV8Contract.methods.FarmProduces(data).call();
+    return prod_array;
+}
+
+// Function to get sold farmer produce consignments array data by index
+async function ProduceSales(data) {
+    const prod_sale_array = await ProduceTraceabilityV8Contract.methods.ProduceSales(data).call();
+    return prod_sale_array;
+}
+
+
 module.exports = {
     registerFarmer,
     verifyFarmer,
@@ -211,8 +246,14 @@ module.exports = {
     getProduceSale,
     getProduceSaleIndex,
     getConsignmentHash,
+    getFarmerCount,
+    getProduceCount,
+    getProduceSaleCount,
     currentconsignment,
     currentproduct,
     producedata,
-    productdata
+    productdata,
+    FarmerAddresses,
+    FarmProduces,
+    ProduceSales
 }

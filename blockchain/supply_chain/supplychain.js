@@ -605,5 +605,81 @@ router.post('/lot/v2',  function(req, res, next) {
 });
 
 
+const farmers = async(req, res) => {
+  try{   
+    const count = await ProduceTraceabilityV8.getFarmerCount();
+    let farmers_array = [], farmer_data = [], _farmer, frm_data;
+    for(let i =0; i< count; i++){
+      _farmer = await ProduceTraceabilityV8.FarmerAddresses(i);
+      frm_data = await ProduceTraceabilityV8.getFarmer(_farmer);
+      farmers_array.push(_farmer);
+      farmer_data.push(frm_data)
+    }
+    const farmer_details = {
+      farmer : farmers_array,
+      data : farmer_data
+    }
+    return res.send(farmer_details);
+  } catch (error) {
+  console.error('error -> ', logStruct('farmers v2', error))
+  return res.send(error.status);
+}
+}
+
+router.get('/farmers/v2', validateToken, async(req, res, next) => {
+  const _farmers =  await farmers(req, res);
+  return res.send(_farmers);
+});
+
+
+const produces = async(req, res) => {
+  try{   
+    const counter = await ProduceTraceabilityV8.getProduceCount();
+    let produces_array = [], index = [], produce_data;
+    for(let ct =0; ct< counter; ct++){
+      produce_data = await ProduceTraceabilityV8.getProduce(ct);
+      produces_array.push(produce_data);
+      index.push(ct);
+    }
+    const produce_details = {
+      index : index,
+      data : produces_array
+    }
+    return res.send(produce_details);
+  } catch (error) {
+  console.error('error -> ', logStruct('produces v2', error))
+  return res.send(error.status);
+}
+}
+
+router.get('/produces/v2', validateToken, async(req, res, next) => {
+  const _produces =  await produces(req, res);
+  return res.send(_produces);
+});
+
+const sales = async(req, res) => {
+  try{   
+    const counter = await ProduceTraceabilityV8.getProduceSaleCount();
+    let sales_array = [], index = [], sales_data;
+    for(let ctr =0; ctr< counter; ctr++){
+      sales_data = await ProduceTraceabilityV8.getProduceSale(ctr);
+      sales_array.push(sales_data);
+      index.push(ctr);
+    }
+    const sales_details = {
+      index : index,
+      data : sales_array
+    }
+    return res.send(sales_details);
+  } catch (error) {
+  console.error('error -> ', logStruct('sales v2', error))
+  return res.send(error.status);
+}
+}
+
+router.get('/sales/v2', validateToken, async(req, res, next) => {
+  const _sales =  await sales(req, res);
+  return res.send(_sales);
+});
 
 module.exports = router; 

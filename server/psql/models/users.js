@@ -72,6 +72,17 @@ exports.updatePassword = async (data) => {
   return query;
 };
 
+exports.changePassword = async (data) => {
+  const query = db.write('axk_users')
+    .where('wallet_id', data.wallet_id)
+    .update({
+    password : data.password,
+    updated_at : moment().format('YYYY-MM-DD HH:mm:ss')
+  });
+  console.info("query -->", query.toQuery())
+  return query;
+};
+
 exports.resetPassword = async (data) => {
   const query = db.write('axk_users')
     .where('email', data.email)
@@ -103,6 +114,14 @@ exports.setPassword = async (data) => {
    return query;
  };
 
+ exports.fetchUserPassword = async (wallet_id) => {
+  const query = db.read.select('axk_users.password')
+  .from('axk_users')
+  .where('wallet_id', '=', wallet_id)
+  .orWhere('email', '=', wallet_id);
+  return query;
+};
+
  exports.fetchUserPin = async (wallet_id) => {
   const query = db.read.select('axk_users.pin')
   .from('axk_users')
@@ -117,10 +136,17 @@ exports.updateProfile = async (data) => {
       name : data.name,
       email : data.email,
       latitude : data.latitude || null,
-      longitude : data.logitude || null,
+      longitude : data.longitude || null,
       updated_at: moment().format('YYYY-MM-DD HH:mm:ss')
     });
   console.info("query -->", query.toQuery())
+  return query;
+};
+
+exports.fetchUserProfile = async (wallet_id) => {
+  const query = db.read.select('axk_users.name', 'axk_users.email', 'axk_users.wallet_id', 'axk_users.latitude', 'axk_users.longitude')
+  .from('axk_users')
+  .where('wallet_id', '=', wallet_id);
   return query;
 };
 

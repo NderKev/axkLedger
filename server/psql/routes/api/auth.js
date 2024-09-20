@@ -3,11 +3,11 @@ const router = express.Router();
 const { check } = require('express-validator');
 const {validateToken, validateFarmerExists} = require('../../middleware/auth');
 const {createFarmerKey} = require('../../controllers/farmers');
-const { getUser, login, createUserPin, getUserPin, refreshToken, updateUserPermission} = require('../../controllers/auth');
+const authController = require('../../controllers/auth');
 //const { createUserRole } = require('../../models/users');
 
-router.get('/', validateToken, getUser);
-router.get('/pin', validateToken, getUserPin);
+router.get('/', validateToken, authController.getUser);
+router.get('/pin', validateToken, authController.getUserPin);
 
 router.post(
   '/',
@@ -15,7 +15,7 @@ router.post(
     check('email', 'Please include a valid email').isEmail(),
     check('password', 'Password is required').exists(),
   ],
-  login,
+  authController.login,
 );
 
 router.post(
@@ -25,7 +25,7 @@ router.post(
     check('pin', 'Pin is required').isNumeric().exists(),
   ],
   validateToken,
-  createUserPin,
+  authController.createUserPin,
 );
 
 router.post(
@@ -45,7 +45,7 @@ router.post(
     check('passphrase', 'Passphrase is required').isNumeric().exists(),
   ],
   validateToken,
-  refreshToken,
+  authController.refreshToken,
 );
 
 router.post(
@@ -56,7 +56,7 @@ router.post(
     check('user_role', 'User Role is required').not().isEmpty(),
   ],
   validateToken,
-  updateUserPermission,
+  authController.updateUserPermission,
 );
 
 module.exports = router;

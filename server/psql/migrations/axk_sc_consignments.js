@@ -9,12 +9,9 @@ exports.up = function (knex) {
         table.string('tx_hash', 500).unique().notNullable();
         table.string('lot_number').notNullable();
         table.string('storage_date').notNullable();
-        //table.enum('mode',['axk', 'btc', 'eth', 'lisk', 'usdc', 'usdt', 'xrp']);
         table.enum('type',['consignment', 'owner', 'change']);
         table.string('weight').notNullable();
-        //table.enum('status',['complete', 'pending', 'failed']);
         table.integer('quantity').unsigned();
-        //table.float('fiat', 10, 5).unsigned();
         table.timestamps();
       })
     ])
