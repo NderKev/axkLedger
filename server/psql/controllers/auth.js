@@ -149,7 +149,8 @@ exports.login = async (req, res) => {
     try {
       const pin_set = await users.fetchUserPin(req.user.wallet_id);
       const res_pin = pin_set[0].pin;
-      if (res_pin !== "null" || res_pin !== null || typeof res_pin !== 'undefined'){
+      console.log(res_pin);
+      if (res_pin !== 'null' && res_pin !== null ){
         return res.status(403).json({ msg : 'pinExists' });
       }
       let str = req.body.pin + req.user.wallet_id + req.user.user;
@@ -211,62 +212,69 @@ exports.login = async (req, res) => {
 
   exports.refreshToken = async(req, res) => {
     try {
-    let data = {}, updateToken = {};
-    const user = req.user.token;
-    const admin = req.admin.token;
-    const farmer = req.farmer.token;
+    const token = req.token;
+    const user = req.user;
+    const admin = req.admin;
+    //const farmer = req.farmer;
     const {pin, passphrase} = req.body;
-    if (!user && !admin && !farmer && !pin && !passphrase) return res.status(401).json({ msg: 'Unauthorized request!' });
-    if (user && passphrase !== null){
-      data = req.user
-      updateToken = await users.verifyToken(user);
-      if (updateToken.message === 'valid'){
-        return updateToken;
+    if (!token && !pin && !passphrase) return res.status(401).json({ msg: 'Unauthorized request!' });
+    if (user && passphrase !== 'null'){
+      const data = req.user;
+      let updateToken = await users.verifyToken(token);
+      console.log("here :" + updateToken.message);
+      const msg = updateToken.message;
+      const wid = updateToken.wallet_id;
+      const _wid = data.wallet_id;
+      if (msg == "valid"){
+        return res.send(updateToken);
       }
-      else if (updateToken.message === "error" || data.wallet_id !== updateToken.wallet_id) {
-        return res.status(403).json({ msg : 'invalid buyer token details' });
-      }
-      else {
+     else if (msg == "expired") {
        await this.authenticatePin(req, res);
        const updatedToken = await users.updateToken({wallet_id: data.wallet_id, role : data.role});
        if (updatedToken.message === "created" || updatedToken.message === "updated"){
-          updateToken.wallet_id = updatedToken.wallet_id;
+          updateToken.expiry = updatedToken.expiration;
           updateToken.token = updatedToken.token;
           updateToken.message = updatedToken.message;
        }
-       return updateToken;
+       return res.send(updateToken);
+      }
+      else if (msg == "error" || wid !== _wid) {
+        return res.status(403).json({ msg : 'invalid buyer token details' });
+      }
+      else {
+        return res.status(404).json({ msg : 'error refreshing token' });
       }
     }
-    else if (admin && pin !== null ){
-      data = req.admin;
-      updateToken = await users.verifyToken(admin);
+    else if (admin && pin !== 'null' ){
+      const data = req.admin;
+      let updateToken = await users.verifyToken(token);
       if (updateToken.message === 'valid'){
-        return updateToken;
+        return res.send(updateToken);
+      }
+      else if (updateToken.message === "expired") {
+      await this.authenticatePinAdmin(req, res);
+      const updatedToken = await users.updateToken({wallet_id: admin.wallet_id, role : admin.role});
+       if (updatedToken.message === "created" || updatedToken.message === "updated"){
+          updateToken.expiry = updatedToken.expiration;
+          updateToken.token = updatedToken.token;
+          updateToken.message = updatedToken.message;
+       } 
+       return res.send(updateToken);
       }
       else if (updateToken.message === "error" || data.wallet_id !== updateToken.wallet_id) {
         return res.status(403).json({ msg : 'invalid admin token details' });
       }
       else {
-      await this.authenticatePinAdmin(req, res);
-      const updatedToken = await users.updateToken({wallet_id: admin.wallet_id, role : admin.role});
-       if (updatedToken.message === "created" || updatedToken.message === "updated"){
-          updateToken.wallet_id = updatedToken.wallet_id;
-          updateToken.token = updatedToken.token;
-          updateToken.message = updatedToken.message;
-       }
-       return updateToken;
+        return res.status(404).json({ msg : 'error refreshing token' });
       }
     }
     else {
-      data = req.farmer;
-      updateToken = await farmers.verifyToken(farmer);
+      const data = req.farmer;
+      let updateToken = await farmers.verifyToken(token);
       if (updateToken.message === 'valid'){
         return updateToken;
       }
-      else if (updateToken.message === "error" || data.wallet_id !== updateToken.wallet_id || data.address !== updateToken.address) {
-        return res.status(403).json({ msg : 'invalid farmer token details' });
-      }
-      else {
+      else if (updateToken.message === "expired"){
         let payload = {
           farmer : {
             wallet_id: data.wallet_id,
@@ -279,7 +287,13 @@ exports.login = async (req, res) => {
         updateToken.wallet_id = data.wallet_id;
         updateToken.token = token;
         updateToken.message = "renewed";
-        return updateToken;
+        return res.send(updateToken);
+      }
+      else if (updateToken.message === "error" || data.wallet_id !== updateToken.wallet_id || data.address !== updateToken.address) {
+        return res.status(403).json({ msg : 'invalid farmer token details' });
+      }
+      else {
+        return res.status(404).json({ msg : 'error refreshing token' });
       }
     } 
   } catch (err) {

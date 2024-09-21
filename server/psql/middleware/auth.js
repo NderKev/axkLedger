@@ -16,13 +16,13 @@ const validateToken = (req, res, next) => {
         const role = decoded.data.role;
         if (role !== "null" && role === "admin"){
           req.admin = decoded.data; 
-          req.admin.token = token;
+          req.token = token;
         }
         else {
           req.user = decoded.data;
-          req.user.token = token;
+          req.token = token;
         }
-        //console.log(req.user.token)
+        console.log(req.token);
         next();
       }
     });
@@ -66,7 +66,7 @@ const validateFarmer = (req, res, next) => {
         console.error(err);
       } else {
          req.farmer = decoded.farmer;
-         req.farmer.token = token;
+         req.token = token;
         //req.token = token;
         next();
       }
@@ -107,7 +107,7 @@ const validateFarmerExists = async(req, res, next) => {
         await farmerModel.updateFarmerToken({address : farmer, token : token.token, expiry: expiry_date.data.exp});
         req.farmer.wallet_id = farmers[0].wallet_id;
         req.farmer.address = farmers[0].address;
-        req.farmer.token = token.token;
+        req.token = token.token;
         //req.token = token;
         next();
       } catch (err) {
