@@ -37,7 +37,6 @@ router.post(
       check('role', 'user role is required').not().isEmpty(),
     ],
     validateToken,
-    validateAdmin,
     adminController.createAdminUser,
   );
   
