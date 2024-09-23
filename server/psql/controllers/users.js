@@ -27,10 +27,11 @@ exports.generateUniqueId = function(length){
       return res.status(400).json({ errors: errors.array() });
     }
   
-    const { email, password, role } = req.body;
+    const { email, password} = req.body;
     const nameMatch = email.match(/^([^@]*)@/);
     const name = nameMatch ? nameMatch[1] : null;
     //req.body.name = name;
+    const role = "buyer";
     console.log(name);
     const wallet_id  = this.generateUniqueId(32);
     console.log(wallet_id);
@@ -50,21 +51,9 @@ exports.generateUniqueId = function(length){
       }
 
       await users.createUser(input);
-      let role_id = 3;
-      if (role === "farmer"){
-        return res.status(404).json({ msg : 'forbidden Request' });
-      }
-      if (role === "admin") {
-        return res.status(404).json({ msg : 'forbidden Request' });
-      }
-      const checkRole = await users.checkUserRole(role);
-      if (!checkRole || !checkRole.length){
-      await users.createUserRole({role : role});
-      }
-      await users.createPermission({wallet_id: wallet_id, role_id: role_id});
+      await users.createBuyer(wallet_id);
       const token =  await users.genToken(input);
       await users.createUserToken(token);
-      //const user_name = await users.fetchUserName(wallet_id);
        try {
         await sendEmail(email, WelcomeMail(name));
       } catch (error) {

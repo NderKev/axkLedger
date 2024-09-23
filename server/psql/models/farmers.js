@@ -138,6 +138,15 @@ exports.getFarmerByWalletId = async (data) => {
     return query;
   };
 
+  exports.getJWTFarmerToken = async (data) => {
+    const query = db.read.select('axk_sc_farmers_jwt.wallet_id', 'axk_sc_farmers_jwt.address', 'axk_sc_farmers_jwt.token', 'axk_sc_farmers_jwt.expiry')
+    .from('axk_sc_farmers_jwt')
+    .where('token', '=', data.token);
+    //.where('address', '=', data.address);
+    console.info("query -->", query.toQuery())
+    return query;
+  };
+
   exports.sleep = function(ms){
     return new Promise(resolve => setTimeout(resolve, ms));
   }

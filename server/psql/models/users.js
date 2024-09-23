@@ -224,7 +224,19 @@ exports.createPermission = async (data) => {
   const createdAt = moment().format('YYYY-MM-DD HH:mm:ss');
   const query = db.write('axk_user_permission').insert({
     wallet_id: data.wallet_id,
-    role_id: data.role_id || 3,
+    role_id: data.role_id || 2,
+    created_at: createdAt,
+    updated_at: createdAt
+  });
+  console.info("query -->", query.toQuery())
+  return query;
+};
+
+exports.createBuyer = async (data) => {
+  const createdAt = moment().format('YYYY-MM-DD HH:mm:ss');
+  const query = db.write('axk_user_permission').insert({
+    wallet_id: data,
+    role_id:  3,
     created_at: createdAt,
     updated_at: createdAt
   });
@@ -299,6 +311,17 @@ exports.updateUserRole = async (data) => {
   return query;
 };
 
+exports.updateRoleTime = async (data) => {
+  const query = db.write('axk_user_role')
+    .where('id', data.role_id)
+    .update({
+      created_at : moment().format('YYYY-MM-DD HH:mm:ss'),
+      updated_at : moment().format('YYYY-MM-DD HH:mm:ss')
+    });
+  console.info("query -->", query.toQuery())
+  return query;
+};
+
 exports.deleteFromUserRole = async (id) => {
   console.log("del to cart model", id)
   const query = db.write('axk_user_role')
@@ -343,6 +366,18 @@ exports.updateUserToken = async (data) => {
   return query;
 };
 
+exports.updateCurrentUserToken = async (data) => {
+  const query = db.write('axk_auth_jwt')
+    .where('token', data.token)
+    .update({
+      token : data.new_token,
+      expiration : data.expiration,
+      updated_at : moment().format('YYYY-MM-DD HH:mm:ss')
+    });
+  console.info("query -->", query.toQuery())
+  return query;
+};
+
 exports.getUserTokenByWalletId = async (wallet_id) => {
   const query = db.read.select('axk_auth_jwt.wallet_id', 'axk_auth_jwt.token', 'axk_auth_jwt.expiration')
   .from('axk_auth_jwt')
@@ -355,6 +390,15 @@ exports.getUserTokenById = async (token) => {
   const query = db.read.select('axk_auth_jwt.wallet_id', 'axk_auth_jwt.token', 'axk_auth_jwt.expiration')
   .from('axk_auth_jwt')
   .where('token', '=', token);
+  console.info("query -->", query.toQuery())
+  return query;
+};
+
+exports.getCurrentTokenUser = async (data) => {
+  const query = db.read.select('axk_auth_jwt.wallet_id', 'axk_auth_jwt.token', 'axk_auth_jwt.expiration')
+  .from('axk_auth_jwt')
+  .where('wallet_id', '=', data.wallet_id)
+  .where('token', '=', data.token);
   console.info("query -->", query.toQuery())
   return query;
 };
@@ -466,12 +510,12 @@ catch(err){
  }
 
 exports.genToken = async (reqData) => {
-  //const validInput = validateDetails.validateAuth(reqData);
-  const userExists = await userModel.getDetailsByWalletId(reqData.wallet_id);
+  const userExists = await userModel.getDetailsByWalletId(reqData);
   console.log(userExists);
   var token = {};
   if (userExists && userExists.length) {
-    var tkn = await userModel.genAuthToken(userExists[0].wallet_id, userExists[0].name, reqData.role);
+    const role = await this.getUserPermission(userExists[0].wallet_id);
+    var tkn = await userModel.genAuthToken(userExists[0].wallet_id, userExists[0].name, role[0].role);
     await sleep(1000);
    if (tkn){
      var tkExp =  getExpDate(tkn.token);
@@ -489,23 +533,25 @@ return token;
 }
 
 exports.updateToken = async (reqData) => {
-  const userExists = await userModel.getDetailsByWalletId(reqData.wallet_id);
+  const userExists = await userModel.getDetailsByWalletId(reqData);
   if (userExists && userExists.length){
   var token = {};
   var input = {};
   input.wallet_id = userExists[0].wallet_id;
   var currentToken = await userModel.getUserTokenByWalletId(userExists[0].wallet_id);
   var timeNow = Math.floor(Date.now() / 1000);
- // console.log(timeNow)
-  if (currentToken && currentToken.length){
-   console.log(currentToken);
+  var db_role = await this.getUserPermission(userExists[0].wallet_id);
+  if (currentToken && currentToken.length && db_role && db_role.length){
+  console.log(currentToken +" : "+ db_role[0].role);
   let _expiry = currentToken[0].expiration;
   let _token = currentToken[0].token;
   let checkId = await userModel.verifyToken(_token);
   let _checkId = checkId.wallet_id;
   let _id = userExists[0].wallet_id;
-  if(_expiry <= timeNow || _checkId !== _id){
-    var newToken = await userModel.genAuthToken(userExists[0].wallet_id, userExists[0].name, reqData.role);
+  let _role = checkId.role;
+  let role = db_role[0].role;
+  if(_expiry <= timeNow || _checkId !== _id || _role !== role && role !== 'admin' && _role !== 'admin'){
+    var newToken = await userModel.genAuthToken(userExists[0].wallet_id, userExists[0].name, role);
      await sleep(1000);
      if (newToken){
        var tkExp = await getExpDate(newToken.token);
@@ -534,7 +580,8 @@ exports.updateToken = async (reqData) => {
    }
     }
  else { //(!currentToken && !currentToken.length)
-    var initToken = await userModel.genAuthToken(userExists[0].wallet_id, userExists[0].name, reqData.role);
+    var usr_role = await this.getUserPermission(userExists[0].wallet_id);
+    var initToken = await userModel.genAuthToken(userExists[0].wallet_id, userExists[0].name, usr_role[0].role);
      await sleep(1000);
      if (initToken){
        var tkInitExp =  getExpDate(initToken.token);
@@ -591,6 +638,7 @@ exports.verifyToken = async (token) => {
        resp.valid = valid;
        resp.wallet_id = token;
        resp.user = token;
+       resp.role = "error";
        resp.message = "error";
        return resp;
     }
@@ -602,6 +650,7 @@ exports.verifyToken = async (token) => {
     //await sleep(1000);
     let _walletid = data.data.wallet_id;
     let _user = data.data.user;
+    let _role = data.data.role;
     var timeNow = Math.floor(Date.now() / 1000);
     if (expiration <= timeNow){
       valid = true;
@@ -610,6 +659,7 @@ exports.verifyToken = async (token) => {
       resp.valid = valid;
       resp.wallet_id = _walletid;
       resp.user = _user;
+      resp.role = _role;
       resp.message = "expired";
     }
     else {
@@ -619,6 +669,7 @@ exports.verifyToken = async (token) => {
       resp.valid = valid;
       resp.wallet_id = _walletid;
       resp.user = _user;
+      resp.role = _role;
       resp.message = "valid";
     }
 
@@ -633,6 +684,7 @@ catch(err){
   resp.valid = valid;
   resp.wallet_id = token;
   resp.user = token;
+  resp.role = "error"
   resp.message = "error";
   return resp;
 }

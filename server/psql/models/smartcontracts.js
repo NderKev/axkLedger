@@ -63,8 +63,8 @@ exports.createConsignment = async (data) => {
     const query = db.read.select('axk_sc_consignments.*' )
       .from('axk_sc_consignments')
       .where('farmer', data.farmer)
-      .where('p_hash', data.hash);
-      //.where('address', data.address);   
+      .where('p_hash', data.hash)
+      .where('tx_hash', data.p_hash);   
       return query;
   };
 
@@ -74,10 +74,26 @@ exports.createConsignment = async (data) => {
       .from('axk_sc_products')
       .where('farmer', data.farmer)
       .where('produce_hash', data.hash);
-      //.where('address', data.address);   
+      //.where('produce_type', data.type);   
       return query;
   };
 
+  exports.checkProduceHash = async (data) => {
+    const query = db.read.select('axk_sc_products.*' )
+      .from('axk_sc_products')
+      .where('farmer', data)
+      .orWhere('produce_hash', data);
+      //.where('produce_type', data.type);   
+      return query;
+  };
+
+  exports.checkProduceExists = async (data) => {
+    const query = db.read.select('axk_sc_products.*' )
+      .from('axk_sc_products')
+      .where('farmer', data.farmer)
+      .where('produce_type', data.produce_type);   
+      return query;
+  };
 
   exports.updateProduct = async (data) => {
     data.updated_at = moment().format('YYYY-MM-DD HH:mm:ss');

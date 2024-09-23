@@ -14,7 +14,6 @@ router.post(
       'password',
       'Please enter a password with 8 or more characters',
     ).isLength({ min: 8 }),
-    check('role', 'User role is required').isString().not().isEmpty(),
   ],
   userController.createUser,
 );
@@ -49,7 +48,7 @@ router.post(
     check('email', 'Please include a valid email').isEmail(),
     check(
       'password',
-      'Please enter a password with 6 or more characters',
+      'Please enter a password with 8 or more characters',
     ).isLength({ min: 8 }),
     check(
       'new_password',

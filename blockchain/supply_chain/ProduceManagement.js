@@ -101,13 +101,16 @@ async function registerProduce(data) {
     let produce_part = [];
     data.lot_number = generateLotNumber(10);
     data.creation_date = moment().format('YYYY/MM/DD');
-    const produce_name = web3.utils.soliditySha3(data.farmer, web3.utils.fromAscii(data.lot_number), web3.utils.fromAscii(data.produce_type), web3.utils.fromAscii(data.creation_date));
-    const lote_hash = web3.utils.soliditySha3(data.farmer, web3.utils.fromAscii(data.lot_number));
-    const creation_date_hash = web3.utils.soliditySha3(data.farmer, web3.utils.fromAscii(data.creation_date));
-    const produce_type_hash = web3.utils.soliditySha3(data.farmer, web3.utils.fromAscii(data.produce_type));
+    //const produce_name = web3.utils.soliditySha3(data.farmer, web3.utils.fromAscii(data.lot_number), web3.utils.fromAscii(data.produce_type), web3.utils.fromAscii(data.creation_date));
+    //const lote_hash = web3.utils.soliditySha3(data.farmer, web3.utils.fromAscii(data.lot_number));
+    //const creation_date_hash = web3.utils.soliditySha3(data.farmer, web3.utils.fromAscii(data.creation_date));
+    //const produce_type_hash = web3.utils.soliditySha3(data.farmer, web3.utils.fromAscii(data.produce_type));
     const produce_hash = await createHashFromInfo(data.farmer, data.lot_number, data.produce_type, data.creation_date);
     //data.uint_array = uint_array;
-    produce_part.push(data.hash, data.hash, data.hash, data.hash, data.hash, data.hash);
+    for (let len = 0; len < data.consignments.length; len++){
+        produce_part.push(data.consignments[len]); 
+    }
+    
     data.uint_array = produce_part;
     //data.produce_hash = produce_hash;
     console.log(produce_hash);

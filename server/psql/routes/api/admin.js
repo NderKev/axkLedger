@@ -3,16 +3,16 @@ const router = express.Router();
 const { check } = require('express-validator');;
 const { validateAdmin, validateToken } = require('../../middleware/auth');
 const adminController = require('../../controllers/admin');
-const { getUser, login, getUserPin, createUserPin, refreshToken} = require('../../controllers/auth');
+const {refreshToken} = require('../../controllers/auth');
 const farmerController = require('../../controllers/farmers');
 
 
-router.get('/', validateToken, validateAdmin, getUser);
+router.get('/', validateToken, validateAdmin, adminController.getAdmin);
 router.get('/buyers', validateToken, validateAdmin, adminController.getBuyers);
 router.get('/farmers', validateToken, validateAdmin, farmerController.getFarmers);
 router.get('/permission', validateToken, validateAdmin, adminController.getUserPermission);
 router.get('/permissions', validateToken, validateAdmin, adminController.getUserPermissions);
-router.get('/pin', validateToken, validateAdmin, getUserPin);
+router.get('/pin', validateToken, validateAdmin, adminController.getAdminPin);
 router.get('/roles', validateToken, validateAdmin, adminController.getUserRoles);
 
 
@@ -22,7 +22,7 @@ router.post(
     check('email', 'Please include a valid email').isEmail(),
     check('password', 'Password is required').exists(),
   ],
-  login,
+  adminController.login,
 );
 
 router.post(
@@ -32,11 +32,12 @@ router.post(
       check('email', 'Please include a valid email').isEmail(),
       check(
         'password',
-        'Please enter a password with 6 or more characters',
-      ).isLength({ min: 6 }),
-      check('role', 'user role is required').not().isEmpty(),
+        'Please enter a password with 12 or more characters',
+        'Password must contain alphabets and numbers',
+      ).isLength({ min: 12 }).isAlphanumeric(),
     ],
     validateToken,
+    validateAdmin,
     adminController.createAdminUser,
   );
   
@@ -55,7 +56,6 @@ router.post(
   router.post(
     '/role',
     [
-      //check('role', 'Please include a valid role').isEmail(),
       check('role', 'User Role is required').isString().exists(),
     ],
     validateToken,
@@ -89,18 +89,16 @@ router.post(
   router.post(
     '/pin',
     [
-      //check('pin', 'Please include a valid pin').isEmail(),
       check('pin', 'Pin is required').isNumeric().exists(),
     ],
     validateToken,
     validateAdmin,
-    createUserPin,
+    adminController.createAdminPin,
   );
 
   router.post(
     '/refresh',
     [
-      //check('pin', 'Please include a valid pin').isEmail(),
       check('pin', 'Pin is required').isNumeric().exists(),
     ],
     validateToken,

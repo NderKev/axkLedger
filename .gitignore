@@ -169,7 +169,7 @@ dist
 .pnp.*
 
 # custom
-server/psql/migrations/axk_txs_eth
+server/psql/migrations/axk_txs_eth.js
 *.zip
 nginx/
 server/psql/migrations/axk_send_btc.js

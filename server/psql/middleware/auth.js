@@ -15,6 +15,7 @@ const validateToken = (req, res, next) => {
       } else {
         const role = decoded.data.role;
         if (role !== "null" && role === "admin"){
+          console.log(role);
           req.admin = decoded.data; 
           req.token = token;
         }
@@ -33,19 +34,19 @@ const validateToken = (req, res, next) => {
 };
 
 const validateAdmin = (req, res, next) => {
-  const token = req.header('x-auth-token');
+  const token = req.token; 
   const admin =  req.admin;
-  if (!token || !admin ) return res.status(401).json({ msg: 'Unauthorized request!' });
+  if (!token || !admin ) return res.status(403).json({ msg: 'Unauthorized request!' });
   try {
     jwt.verify(token, config.JWT_SECRET, (err, decoded) => {
       if (err) {
         res.status(401).json({ msg: 'Unauthorized request!' });
         console.error(err);
-      } else {
-         //req.admin = decoded.data;
+      } else { 
         if (decoded.data.wallet_id !== admin.wallet_id ){
-          res.status(401).json({ msg: 'Only Admin allowed!'});
+          res.status(404).json({ msg: 'Only Admin allowed!'});
         }
+        req.admin = decoded.data;
         next();
       }
     });
@@ -78,8 +79,6 @@ const validateFarmer = (req, res, next) => {
 };
 
 const validateFarmerExists = async(req, res, next) => {
-  //const token = req.header('x-farmer-token');
-  //const admin =  req.admin;
   let data = req.body;
   let farmer;
   if (data.farmer && !data.address){

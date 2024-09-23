@@ -30,28 +30,31 @@ exports.login = async (req, res) => {
    
     try {
       const user = await users.getUserDetailsByEmail(email);
-      console.log(user);
+      //console.log(user);
       if (!user && !user.length) {
         return res.status(400).json({ errors: [{ msg: 'User not registered yet' }] });
       }
-  
+      let role_response = await users.getUserPermission(user[0].wallet_id);
+      //console.log(role_response[0].role);
+      if (!role_response || !role_response.length){
+        return res.status(403).json({ msg : 'forbidden Request' });
+      } 
+      if (role_response[0].role === 'admin' || role_response[0].role == 'admin'){
+        return res.status(403).json({ msg : 'forbidden Request' });
+      }
       const isMatch = await bcrypt.compare(String(password), user[0].password);
   
       if (!isMatch) {
         return res.status(400).json({ errors: [{ msg: 'Invalid credentials login user' }] });
       }
+
       const isFlagged = await users.isWalletIdFlagged(user[0].wallet_id);
-      console.log(isFlagged[0].flag)
+      //console.log(isFlagged[0].flag)
       if (isFlagged[0].flag !== 'null' && isFlagged[0].flag === 1){
         return res.status(403).json({ errors: [{ msg: 'user flagged contact admin for asistance' }] });
       }
-      let role_response = await users.getUserPermission(user[0].wallet_id);
-      console.log(role_response);
-      if (!role_response || !role_response.length){
-        await users.createPermission({wallet_id: user[0].wallet_id, role_id: 3});
-        role_response = await users.getUserPermission(user[0].wallet_id);
-      }
-      const token = await users.updateToken({wallet_id : user[0].wallet_id, role : role_response[0].role});
+      
+      const token = await users.updateToken(user[0].wallet_id);
       console.log("token :" + token.token);
       let pinSet = true;
       let pin = user[0].pin;
@@ -198,10 +201,11 @@ exports.login = async (req, res) => {
 
   exports.authenticatePinAdmin = async(req, res) => {
     const resPin = await users.fetchUserPin(req.admin.wallet_id);
+    console.log(resPin[0].pin);
     const strPin = req.body.pin + req.admin.wallet_id + req.admin.user;
     const hPin = pinHash(strPin);
-    let verPin = req.admin.wallet_id + req.admin.user;
-    let vPin = pinHash(verPin);
+    const verPin = req.body.pin + req.admin.user;
+    const vPin = pinHash(verPin);
     const match =  CryptoJS.AES.decrypt(resPin[0].pin, vPin);
     const matchPin = match.toString(CryptoJS.enc.Utf8);
     const correct = hPin == matchPin ? true : false;
@@ -215,86 +219,91 @@ exports.login = async (req, res) => {
     const token = req.token;
     const user = req.user;
     const admin = req.admin;
-    //const farmer = req.farmer;
+    const farmer = req.farmer;
     const {pin, passphrase} = req.body;
-    if (!token && !pin && !passphrase) return res.status(401).json({ msg: 'Unauthorized request!' });
+    var timeNow = Math.floor(Date.now() / 1000);
+    let updateToken;
+    if (!token && !pin && !passphrase) return res.status(403).json({ msg: 'Unauthorized request!' });
     if (user && passphrase !== 'null'){
-      const data = req.user;
-      let updateToken = await users.verifyToken(token);
-      console.log("here :" + updateToken.message);
-      const msg = updateToken.message;
-      const wid = updateToken.wallet_id;
-      const _wid = data.wallet_id;
-      if (msg == "valid"){
-        return res.send(updateToken);
+      const curr_token = await users.getCurrentTokenUser({wallet_id : user.wallet_id, token : token});
+      if (!curr_token && !curr_token.length) return res.status(401).json({ msg: 'Unexisting user jwt db!' });
+      await this.authenticatePin(req, res);
+      const _wid = user.wallet_id;
+      const expiry = curr_token[0].expiration;
+      const wid = curr_token[0].wallet_id;
+      if (expiry > timeNow && wid == _wid){
+          updateToken = await users.verifyToken(token);
+         return res.send(updateToken);
       }
-     else if (msg == "expired") {
-       await this.authenticatePin(req, res);
-       const updatedToken = await users.updateToken({wallet_id: data.wallet_id, role : data.role});
-       if (updatedToken.message === "created" || updatedToken.message === "updated"){
-          updateToken.expiry = updatedToken.expiration;
-          updateToken.token = updatedToken.token;
-          updateToken.message = updatedToken.message;
-       }
+     else if (expiry < timeNow && wid == _wid) {
+       const user_token = await users.genToken(user.wallet_id);
+       await users.updateCurrentUserToken({token: token, new_token : user_token.token, expiration : user_token.expiration});
+       updateToken = await users.verifyToken(user_token.token);
        return res.send(updateToken);
       }
-      else if (msg == "error" || wid !== _wid) {
+      else if (wid !== _wid) {
         return res.status(403).json({ msg : 'invalid buyer token details' });
       }
       else {
-        return res.status(404).json({ msg : 'error refreshing token' });
+        return res.status(404).json({ msg : 'error refreshing buyer token' });
       }
     }
     else if (admin && pin !== 'null' ){
-      const data = req.admin;
-      let updateToken = await users.verifyToken(token);
-      if (updateToken.message === 'valid'){
+      const curr_token = await users.getCurrentTokenUser({wallet_id : admin.wallet_id, token : token});
+      if (!curr_token && !curr_token.length) return res.status(401).json({ msg: 'Unexisting admin jwt db!' });
+      await this.authenticatePinAdmin(req, res);
+      const expiry = curr_token[0].expiration;
+      const _wid = admin.wallet_id;
+      const wid = curr_token[0].wallet_id;
+      if (expiry > timeNow && wid == _wid){
+        updateToken = await users.verifyToken(token);
         return res.send(updateToken);
       }
-      else if (updateToken.message === "expired") {
-      await this.authenticatePinAdmin(req, res);
-      const updatedToken = await users.updateToken({wallet_id: admin.wallet_id, role : admin.role});
-       if (updatedToken.message === "created" || updatedToken.message === "updated"){
-          updateToken.expiry = updatedToken.expiration;
-          updateToken.token = updatedToken.token;
-          updateToken.message = updatedToken.message;
-       } 
-       return res.send(updateToken);
+      else if (expiry < timeNow && wid == _wid) {
+        const adm_token = await users.genToken(admin.wallet_id);
+        await users.updateCurrentUserToken({token: token, new_token : adm_token.token, expiration : adm_token.expiration});
+        updateToken = await users.verifyToken(adm_token.token);
+        return res.send(updateToken);
       }
-      else if (updateToken.message === "error" || data.wallet_id !== updateToken.wallet_id) {
+      else if (wid !== _wid) {
         return res.status(403).json({ msg : 'invalid admin token details' });
       }
       else {
-        return res.status(404).json({ msg : 'error refreshing token' });
+        return res.status(404).json({ msg : 'error refreshing token admin' });
       }
     }
-    else {
-      const data = req.farmer;
-      let updateToken = await farmers.verifyToken(token);
-      if (updateToken.message === 'valid'){
+    else if (farmer){
+      const frm_token = await farmers.getJWTFarmerToken(token);
+      if (!frm_token && !frm_token.length) return res.status(401).json({ msg: 'Unexisting farmer jwt db!' });
+      const expiry = frm_token[0].expiry;
+      const _wid = farmer.wallet_id;
+      const wid = frm_token[0].wallet_id;
+      if (expiry > timeNow && wid == _wid && farmer.address == frm_token[0].address){
+        updateToken = await farmers.verifyToken(token);
         return updateToken;
       }
-      else if (updateToken.message === "expired"){
+      else if (expiry < timeNow && wid == _wid && farmer.address == frm_token[0].address){
         let payload = {
           farmer : {
-            wallet_id: data.wallet_id,
-            address : data.address
+            wallet_id: farmer.wallet_id,
+            address : farmer.address
           }
         }
         const token =  farmers.createToken(payload);
         const expiry_date =  farmers.getExpiryDate(token.token);
-        await farmers.updateFarmerToken({address : data.address, token : token.token, expiry: expiry_date.data.exp});
-        updateToken.wallet_id = data.wallet_id;
-        updateToken.token = token;
-        updateToken.message = "renewed";
+        await farmers.updateFarmerToken({address : farmer.address, token : token.token, expiry: expiry_date.data.exp});
+        updateToken = await farmers.verifyToken(token.token);
         return res.send(updateToken);
       }
-      else if (updateToken.message === "error" || data.wallet_id !== updateToken.wallet_id || data.address !== updateToken.address) {
+      else if (wid !== _wid || farmer.address !== frm_token[0].address) {
         return res.status(403).json({ msg : 'invalid farmer token details' });
       }
       else {
-        return res.status(404).json({ msg : 'error refreshing token' });
+        return res.status(404).json({ msg : 'error refreshing farmer token' });
       }
+    }
+    else {
+      return res.status(404).json({ msg : 'no req refreshing users token' });
     } 
   } catch (err) {
     console.error(err.message + ': Internal auth error in token refresh controller');
@@ -304,11 +313,11 @@ exports.login = async (req, res) => {
 
 exports.updateUserRole = async (req, res) => {
   try {
-    const user = await users.updateUserRole(req.body);
+    const user = await users.updateRoleTime(req.body);
     return res.status(200).json(user);
   } catch (err) {
     console.error(err.message);
-    return res.status(500).send('Internal server error update user roles');
+    return res.status(500).send('Internal server error update user role time');
   }
 };
 
@@ -324,9 +333,10 @@ exports.updateUserPermission = async (req, res) => {
     if (!userExists && !userExists.length) {
       return res.status(403).json({ msg : 'userNotExists' });
     }
-    if (userExists[0].id !== 1){
+    if (role_id == 1 || user_role === 'admin'){
       return res.status(404).json({ msg : 'forbidden Request' });
     }
+    
 
     let input = {
       role_id : role_id,

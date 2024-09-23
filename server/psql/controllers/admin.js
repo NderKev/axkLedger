@@ -5,6 +5,8 @@ const { validationResult } = require('express-validator');
 const { WelcomeMail } = require('../../mails');
 const users = require('../models/users');
 const userController = require('./users');
+const CryptoJS = require("crypto-js");
+const pinHash = require('sha256');
 const sendEmail = require('../../helpers/sendMail');
 
 exports.createAdminUser = async (req, res) => {
@@ -13,7 +15,7 @@ exports.createAdminUser = async (req, res) => {
       return res.status(400).json({ errors: errors.array() });
     }
   
-    const { email, password, role } = req.body;
+    const { email, password} = req.body;
     const nameMatch = email.match(/^([^@]*)@/);
     const name = nameMatch ? nameMatch[1] : null;
     console.log(name);
@@ -35,16 +37,6 @@ exports.createAdminUser = async (req, res) => {
 
       await users.createUser(input);
       let role_id = 1;
-      if (role === "buyer"){
-        return res.status(404).json({ msg : 'forbidden Request' });
-      }
-      if (role === "farmer") {
-        return res.status(404).json({ msg : 'forbidden Request' });
-      }
-      const checkRole = await users.checkUserRole(role);
-      if (!checkRole || !checkRole.length){
-      await users.createUserRole({role : role});
-      }
       await users.createPermission({wallet_id: wallet_id, role_id: role_id});
       const token =  await users.genToken(input);
       await users.createUserToken(token);
@@ -171,4 +163,110 @@ exports.createAdminUser = async (req, res) => {
     }
   };
 
+  exports.login = async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
   
+    const { email, password } = req.body;
+   
+    try {
+      const user = await users.getUserDetailsByEmail(email);
+      //console.log(user);
+      if (!user && !user.length) {
+        return res.status(400).json({ errors: [{ msg: 'User not registered yet' }] });
+      }
+      
+      if (user[0].id != 1 && user[0].id != 3){
+        return res.status(403).json({ errors: [{ msg: 'user id flagged contact admin for asistance' }] });
+      }
+
+      let role_response = await users.getUserPermission(user[0].wallet_id);
+      //console.log(role_response);
+      if (!role_response || !role_response.length){
+        //await users.createPermission({wallet_id: user[0].wallet_id, role_id: 1});
+        //role_response = await users.getUserPermission(user[0].wallet_id);
+        return res.status(403).json({ msg : 'forbidden Request' });
+      }
+      if (role_response[0].role !== 'null' &&  role_response[0].role !== 'admin'){
+        return res.status(403).json({ msg : 'forbidden Request' });
+      }
+      const isMatch = await bcrypt.compare(String(password), user[0].password);
+  
+      if (!isMatch) {
+        return res.status(400).json({ errors: [{ msg: 'Invalid credentials login user' }] });
+      }
+      const isFlagged = await users.isWalletIdFlagged(user[0].wallet_id);
+      //console.log(isFlagged[0].flag)
+      if (isFlagged[0].flag !== 'null' && isFlagged[0].flag === 1){
+        return res.status(403).json({ errors: [{ msg: 'user flagged contact admin for asistance' }] });
+      }
+     
+      const token = await users.updateToken(user[0].wallet_id);
+      console.log("token :" + token.token);
+      let pinSet = true;
+      let pin = user[0].pin;
+      if (typeof pin === 'undefined' || pin === null || pin == 'null'){
+         pinSet = false;
+        }
+      const user_roles = role_response.map(el => el.role);
+      console.log(user_roles[0]);
+      return res.json({token , pin : pinSet, user_roles : user_roles[0]});
+
+      
+    } catch (error) {
+        console.error(error.message);
+        return res.status(500).json({ msg: 'Internal server error login admin' });
+    }
+  };
+
+  exports.createAdminPin = async(req , res) => {
+    try {
+      const wallet_id = req.admin.wallet_id;
+      console.log(wallet_id);
+      const pin_set = await users.fetchUserPin(wallet_id);
+      const res_pin = pin_set[0].pin;
+      console.log(res_pin);
+      if (res_pin !== 'null' && res_pin !== null ){
+        return res.status(403).json({ msg : 'pinExists' });
+      }
+      let str = req.body.pin + req.admin.wallet_id + req.admin.user;
+      let pinStr = req.body.pin + req.admin.user;
+      const pn = pinHash(str);
+      const pword = pinHash(pinStr);
+      const encrPin = CryptoJS.AES.encrypt(pn, pword).toString();
+      //req.body.pin = encrPin;
+      const response = await users.setUserPin({wallet_id : wallet_id, pin : encrPin }); 
+      return res.json({response , msg : 'admin pin created'});
+  } catch (error) {
+      console.error(error.message);
+      return res.status(500).json({ msg: 'Internal server error create admin pin' });
+    }
+  };
+
+  exports.getAdminPin = async(req, res) => {
+    try {
+      const response = await users.fetchUserPin(req.admin.wallet_id);
+      let pin = response[0].pin;
+      if (typeof pin === 'undefined' || pin === null || pin == 'null'){
+        return res.status(401).json({ msg: 'pinNotSet' });
+      }
+      return res.json({pin : pin , msg : 'pinSet'});
+  } catch (error) {
+    console.error(error.message);
+    return res.status(500).json({ msg: 'Internal server error get admin pin' });
+    }
+  };
+
+  exports.getAdmin = async (req, res) => {
+    try {
+      const wallet_id  = req.admin.wallet_id;
+      console.log(wallet_id);
+      const user = await users.getDetailsByWalletId(wallet_id);
+      return res.status(200).json(user);
+    } catch (err) {
+      console.error(err.message);
+      return res.status(500).send('Internal server error get admin');
+    }
+  };
