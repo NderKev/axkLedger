@@ -210,7 +210,13 @@ const logStruct = (func, error) => {
         await farmerModel.sleep(1000);
         await farmerModel.createFarmerToken({address : wallet.address, wallet_id : wallet.wallet_id, token : token.token, expiry : token.expiry});
       }
-      return successResponse(201, wallet, 'farmerWalletCreated');
+      
+      const resp_farmer = {
+        wallet : wallet,
+        token : token
+      }
+
+      return successResponse(201, resp_farmer, 'farmerWalletCreated');
       } catch(error){
         console.error('error -> ', logStruct('createFarmerAddress', error))
         return errorResponse(error.status, error.message);
