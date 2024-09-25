@@ -79,6 +79,8 @@ const validateFarmer = (req, res, next) => {
 };
 
 const validateFarmerExists = async(req, res, next) => {
+  const token = req.token; 
+  if (!token) return res.status(401).json({ msg: 'Unauthorized request!' });
   let data = req.body;
   let farmer;
   if (data.farmer && !data.address){
@@ -95,6 +97,7 @@ const validateFarmerExists = async(req, res, next) => {
   const farmers = await farmerModel.checkFarmerExists(farmer);
   if (!farmers || !farmers.length) return res.status(401).json({ msg: 'Farmer doesnt exist!' });
   try { 
+        
         let payload = {
           farmer : {
             wallet_id: farmers[0].wallet_id,
