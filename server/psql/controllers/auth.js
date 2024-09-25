@@ -189,7 +189,7 @@ exports.login = async (req, res) => {
        const resPin = await users.fetchUserPin(req.user.wallet_id);
        const strPin = req.body.passphrase + req.user.wallet_id + req.user.user;
        const hPin = pinHash(strPin);
-       let verPin = req.user.wallet_id + req.user.user;
+       let verPin = req.body.passphrase + req.user.user;
        let vPin = pinHash(verPin);
        const match =  CryptoJS.AES.decrypt(resPin[0].pin, vPin);
        const matchPin = match.toString(CryptoJS.enc.Utf8);

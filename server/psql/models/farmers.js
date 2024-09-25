@@ -96,7 +96,7 @@ exports.getFarmerByWalletId = async (data) => {
   
   exports.createFarmerToken = async (data) => {
     const createdAt = moment().format('YYYY-MM-DD HH:mm:ss');
-    const query = db.write('axk_sc_farmers_jwt').insert({
+    const query = db.write('axk_sc_jwt').insert({
       address : data.address,
       wallet_id : data.wallet_id,
       token: data.token,
@@ -109,7 +109,7 @@ exports.getFarmerByWalletId = async (data) => {
   };
   
   exports.updateFarmerToken = async (data) => {
-    const query = db.write('axk_sc_farmers_jwt')
+    const query = db.write('axk_sc_jwt')
       .where('address', data.address)
       .update({
         token : data.token,
@@ -121,8 +121,8 @@ exports.getFarmerByWalletId = async (data) => {
   };
   
   exports.getFarmerToken = async (data) => {
-    const query = db.read.select('axk_sc_farmers_jwt.wallet_id', 'axk_sc_farmers_jwt.token', 'axk_sc_farmers_jwt.expiry')
-    .from('axk_sc_farmers_jwt')
+    const query = db.read.select('axk_sc_jwt.wallet_id', 'axk_sc_jwt.token', 'axk_sc_jwt.expiry')
+    .from('axk_sc_jwt')
     .where('wallet_id', '=', data)
     .orWhere('address', '=', data);
     console.info("query -->", query.toQuery())
@@ -130,8 +130,8 @@ exports.getFarmerByWalletId = async (data) => {
   };
 
   exports.getCurrentFarmerToken = async (data) => {
-    const query = db.read.select('axk_sc_farmers_jwt.wallet_id', 'axk_sc_farmers_jwt.token', 'axk_sc_farmers_jwt.expiry')
-    .from('axk_sc_farmers_jwt')
+    const query = db.read.select('axk_sc_jwt.wallet_id', 'axk_sc_jwt.token', 'axk_sc_jwt.expiry')
+    .from('axk_sc_jwt')
     .where('token', '=', data.token)
     .where('address', '=', data.address);
     console.info("query -->", query.toQuery())
@@ -139,8 +139,8 @@ exports.getFarmerByWalletId = async (data) => {
   };
 
   exports.getJWTFarmerToken = async (data) => {
-    const query = db.read.select('axk_sc_farmers_jwt.wallet_id', 'axk_sc_farmers_jwt.address', 'axk_sc_farmers_jwt.token', 'axk_sc_farmers_jwt.expiry')
-    .from('axk_sc_farmers_jwt')
+    const query = db.read.select('axk_sc_jwt.wallet_id', 'axk_sc_jwt.address', 'axk_sc_jwt.token', 'axk_sc_jwt.expiry')
+    .from('axk_sc_jwt')
     .where('token', '=', data.token);
     //.where('address', '=', data.address);
     console.info("query -->", query.toQuery())
