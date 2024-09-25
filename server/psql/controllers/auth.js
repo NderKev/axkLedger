@@ -272,7 +272,7 @@ exports.login = async (req, res) => {
         return res.status(404).json({ msg : 'error refreshing token admin' });
       }
     }
-    else if (farmer){
+    else if (farmer && !pin && !passphrase){
       const frm_token = await farmers.getJWTFarmerToken(token);
       if (!frm_token && !frm_token.length) return res.status(401).json({ msg: 'Unexisting farmer jwt db!' });
       const expiry = frm_token[0].expiry;

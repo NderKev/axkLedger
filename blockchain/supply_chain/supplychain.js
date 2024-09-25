@@ -153,7 +153,7 @@ router.post('/add/v2', [
   check('quantity', 'Please include the quantity').isInt().not().isEmpty(),
   check('agents', 'Please include the agents array').isArray().not().isEmpty(),
   check('x-auth-token', 'Please include the authentication token').not().isEmpty()
-], validateToken, validateAdmin, validateFarmerExists, async(req, res, next) => {
+], validateToken, validateAdmin, validateFarmer, async(req, res, next) => {
   console.log(req.body);
   //const {to, amount} = req.body
   const product = await addFarmProduceV2(req, res);
@@ -206,8 +206,9 @@ router.post('/reg/product/v2',  [
   check('farmer', 'Please include farmer address').not().isEmpty(),
   check('consignments', 'Please include produce consignments').isArray().not().isEmpty(),
   check('produce_type', 'Please include the produce type').not().isEmpty(),
-  check('x-auth-token', 'Please include the authentication token').not().isEmpty()
-] , validateToken, validateAdmin, validateFarmerExists, 
+  check('x-auth-token', 'Please include the authentication token').not().isEmpty(),
+  check('x-auth-token', 'Please include the authentication token').not().isEmpty(),
+] , validateToken, validateAdmin, validateFarmer, 
 async(req, res, next) => {
   console.log(req.body);
   //const {to, amount} = req.body
@@ -253,7 +254,7 @@ router.post('/own/product/v2', [
   check('p_hash', 'Please include produce hash').not().isEmpty(),
   check('op_type', 'Please include the operation type').isInt().not().isEmpty(),
   check('x-auth-token', 'Please include the authentication token').not().isEmpty()
-] ,validateToken, validateAdmin, validateFarmerExists, async(req, res, next) => {
+] ,validateToken, validateAdmin, validateFarmer, async(req, res, next) => {
   console.log(req.body);
   //const {to, amount} = req.body
   const own = await addOwnership(req, res);
@@ -351,7 +352,7 @@ const sellFarmProduce = async(req, res) => {
     check('amount', 'Please include the produce sale amount').isInt().not().isEmpty(),
     check('price', 'Please include the produce sale price').isInt().not().isEmpty(),
     check('x-auth-token', 'Please include the authentication token').not().isEmpty()
-  ], validateToken, validateFarmerExists, async(req, res, next) => {
+  ], validateToken, validateFarmer, async(req, res, next) => {
     //console.log(req.body);
     //const {to, amount} = req.body
     const sell = await sellFarmProduce(req, res);
@@ -380,7 +381,7 @@ const getFarmer = async(req, res) => {
   router.post('/farmer/v2', [
     check('address', 'Please include farmer address').not().isEmpty(),
     check('x-auth-token', 'Please include the authentication token').not().isEmpty()
-  ] , validateToken, validateFarmerExists, async(req, res, next) => {
+  ] , validateToken, async(req, res, next) => {
     //console.log(req.body);
     //const {to, amount} = req.body
     const farmer = await getFarmer(req, res);

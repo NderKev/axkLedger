@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { check } = require('express-validator');;
-const { validateAdmin, validateToken } = require('../../middleware/auth');
+const { validateAdmin, validateToken, validateFarmer } = require('../../middleware/auth');
 const adminController = require('../../controllers/admin');
 const {refreshToken} = require('../../controllers/auth');
 const farmerController = require('../../controllers/farmers');
@@ -84,6 +84,18 @@ router.post(
     validateToken,
     validateAdmin,
     farmerController.createFarmerToken,
+  );
+
+  router.post(
+    '/farmer/refresh',
+    [
+      check('x-farmer-token', 'farmer token is required').exists(),
+      check('wallet_id', 'farmer wallet id is required').exists(),
+      check('address', 'farmer address id is required').exists(),
+    ],
+    validateToken,
+    validateAdmin,
+    refreshToken,
   );
 
   router.post(

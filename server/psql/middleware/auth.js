@@ -80,7 +80,9 @@ const validateFarmer = (req, res, next) => {
 
 const validateFarmerExists = async(req, res, next) => {
   const token = req.token; 
-  if (!token) return res.status(401).json({ msg: 'Unauthorized request!' });
+  if (!token) return res.status(404).json({ msg: 'Unauthorized request!' });
+  const frm_token = await farmers.getJWTFarmerToken(token);
+  if (!frm_token && !frm_token.length) return res.status(403).json({ msg: 'Unexisting farmer jwt db!' });
   let data = req.body;
   let farmer;
   if (data.farmer && !data.address){
@@ -113,8 +115,8 @@ const validateFarmerExists = async(req, res, next) => {
         //req.token = token;
         next();
       } catch (err) {
-    console.error('Internal auth error in token validation farmer middleware');
-    res.status(500).json({ msg: 'Internal auth error farmer' });
+    console.error(err.message + 'Internal auth error in token validation farmer middleware');
+    res.status(500).json({ msg: err.message + ' : Internal auth error farmer' });
   }
 };
 /** const validateTokenMeta = (req, res, next) => {
