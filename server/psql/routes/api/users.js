@@ -5,6 +5,9 @@ const userController = require('../../controllers/users');
 const { validateToken } = require('../../middleware/auth');
 
 router.get('/profile', validateToken, userController.getUserProfile);
+router.get('/tx/all', validateToken, userController.getUserTransactions);
+router.get('/tx/complete', validateToken, userController.getUserCompleteTransactions);
+router.get('/tx/pending', validateToken, userController.getUserPendingTransactions);
 
 router.post(
   '/',
@@ -103,7 +106,14 @@ router.get(
 );
 
 
-
+router.get(
+  '/tx/:hash',
+  [
+    check('hash', 'transaction hash is required').isHexadecimal().not().isEmpty(),
+  ],
+  validateToken,
+  userController.getUserTransactionDetails,
+);
 
 
 module.exports = router;

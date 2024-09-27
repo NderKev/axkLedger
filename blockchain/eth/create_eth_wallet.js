@@ -36,50 +36,44 @@ const logStruct = (func, error) => {
     }
     try {
     //const network = bitcoin.networks.testnet; // if we are using (testnet) then  we use networks.testnet 
-    const userExists = await userModel.checkUserExists(req.user.wallet_id);
+    const userExists = await userModel.checkUserExists(req.body.wallet_id);
     if (!userExists && !userExists.length) {
       return res.status(403).json({ msg : 'user doesnt exist' });
     }
-    const walletExists = await walletModel.checkWallet(req.user.wallet_id);
+    const walletExists = await walletModel.checkWallet(req.body.wallet_id);
     if (!walletExists && !walletExists.length) {
         return res.status(403).json({ msg : 'walletNotExists' });
       }
-    let auth_evm, data;
-    const adm = req.admin.role;
-    const usr = req.user.role;
-    if (usr !== 'admin' && adm !== 'admin'){
-      auth_evm = await authenticateUser(req, res);
-      data = req.user;
+    let auth_evm = {}, data = {}, pin_set = true;
+    const adm = req.admin;
+    const usr = req.user;
+    const wallet = {};
+    const check_pin = await userModel.fetchUserPin(req.body.wallet_id);
+    const auth = check_pin[0].pin;
+    if (typeof auth === 'undefined' || auth === null || auth == 'null'){
+    pin_set = false;
     }
-    else {
-      auth_evm = await authenticateAdmin(req, res);
-      data = req.admin;
+    if (pin_set == true && auth !== 'null' && usr){
+      await authenticatePin(req, res);
+      auth_evm = await authenticateUser(req, res);
+      data.user = req.user;
+    }
+    if (pin_set == true  && auth !== 'null' && adm) {
+          await authenticatePinAdmin(req, res)
+          auth_evm = await authenticateAdmin(req, res);
+          data.user = req.admin;
     }
     
-    const wallet = {};
-    const check_pin = await getUserPin(req, res);
-    if (check_pin.pin && check_pin.msg === 'PinSet' && usr !== 'admin' && adm !== 'admin'){
-          await authenticatePin(req, res);
-    } 
-    if (check_pin.pin && check_pin.msg === 'PinSet' && adm === 'admin'){
-        await authenticatePinAdmin(req, res);
-     }
-
     const eth_address = decryptPrivKey(auth_evm);
   
     wallet.wallet_id = req.body.wallet_id;
-    //wallet.mnemonic = CryptoJS.AES.encrypt(_mnemonic, pinHash(comb)).toString();
     wallet.username = data.user;
-    //wallet.passphrase = bcrypt.hashSync(String(comb), saltRounds);
-    //wallet.wif = cryptKey;
     wallet.index = 0;
     wallet.address = eth_address.addr;
-    //wallet.xPub = cryptXpub;
-    //wallet.xPriv = cryptXpriv;
     console.log(`
     Wallet generated:
      - Address  : ${eth_address.addr}, 
-     - user_name : ${usr_name}
+     - wallet : ${wallet}
          
     `)
 

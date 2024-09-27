@@ -187,7 +187,6 @@ exports.activeUser = async (wallet_id) => {
 exports.setUserPin = async (data) => {
   const query = db.write('axk_users')
     .where('wallet_id', data.wallet_id)
-    //.where('email', data.email)
     .update({
     pin : data.pin,
     updated_at : moment().format('YYYY-MM-DD HH:mm:ss')

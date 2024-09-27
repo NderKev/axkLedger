@@ -82,6 +82,14 @@ exports.getTxsByMode = async (mode) => {
   return query;
 };
 
+exports.getUserTxsByMode = async (data) => {
+  const query = db.read.select('*')
+  .from('axk_txs')
+  .where('wallet_id', '=', data.wallet_id)
+  .where('mode', '=', data.mode);
+  return query;
+};
+
 exports.createTransaction = async (data) => {
   const createdAt = moment().format('YYYY-MM-DD HH:mm:ss');
   const query = db.write('axk_txs').insert({
@@ -108,6 +116,23 @@ exports.updateTransaction = async (data) => {
     updated_at : createdAt
   })
   .where('id', '=', data.id);
+
+  console.info("query -->", query.toQuery())
+  return query;
+};
+
+exports.updateTransactionData = async (data) => {
+  data.updated_at = moment().format('YYYY-MM-DD HH:mm:ss');
+  const toBeUpdated = {};
+  const canBeUpdated = ['type', 'status', 'value', 'fiat'];
+  for (let i in data) {
+    if (canBeUpdated.indexOf(i) > -1) {
+      toBeUpdated[i] = data[i];
+    }
+  }
+  const query = db.write('axk_txs')
+    .where('tx_hash', data.tx_hash)
+    .update(toBeUpdated);
 
   console.info("query -->", query.toQuery())
   return query;

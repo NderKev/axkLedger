@@ -85,7 +85,8 @@ const pinHash = require('sha256');
      return res.status(401).json({ msg: 'Invalid address!' });
     } 
     const { address, wallet_id, token} = req.body;
-    
+    //const token = req.farmer.token;
+    //if (!token) return res.status(403).json({ msg: 'Unauthorized request!' });
     try {
         const userExists = await farmers.checkFarmerExists(address);
         if (!userExists && !userExists.length) {
@@ -102,7 +103,7 @@ const pinHash = require('sha256');
           else {
           var timeNow = Math.floor(Date.now() / 1000);
           if (tokenExists[0].expiry <= timeNow){
-            const token_new = await farmers.genFarmerToken(auth_token.address);
+            const token_new = await farmers.genFarmerToken(tokenExists[0].address);
             await farmers.updateFarmerToken(token_new);
             return res.json({token : token_new, msg : 'token updated'});
           }
@@ -116,11 +117,11 @@ const pinHash = require('sha256');
             await farmers.createFarmerToken(auth_token);//{address : auth_token.address, wallet_id : auth_token.wallet_id, token : auth_token.token, expiry : auth_token.expiry}
             return res.json({token: auth_token, msg : 'token created'});
           }
-          if (auth_token.valid == true && auth_token.message === "expired"){
+          /** if (auth_token.valid == true && auth_token.message === "expired"){
             const token_exp = await farmers.genFarmerToken(auth_token.address);
             await farmers.updateFarmerToken(token_exp);
             return res.json({token : token_exp, msg : 'token updated'});
-          }
+          } **/
           return res.json({token : auth_token, msg : 'token creation invalid'});
         }
         

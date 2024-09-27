@@ -138,6 +138,7 @@ const addFarmProduceV2 = async(req, res) => {
     consignment.weight = add_prd.weight;
     consignment.quantity = add_prd.quantity;
     await smartcontracts.createConsignment(consignment);
+    await smartcontracts.createConsignmentOwner(consignment);
     product.consignment = consignment;
     return res.send(product); //successResponse(200, bal_axk, 'balance'); 
   } catch (error) {
@@ -194,6 +195,7 @@ const registerProduce = async(req, res) => {
     product.creation_date = reg_prd.creation_date;
     product.produce_type = reg_prd.produce_type;
     await smartcontracts.createProduce(product);
+    //await smartcontracts.createProductOwner(product);
     req.product = product;
     return res.send(reg); //successResponse(200, bal_axk, 'balance'); 
   } catch (error) {
@@ -234,6 +236,7 @@ const addOwnership = async(req, res) => {
     }    
     //const produce_hash = await ProduceManagement.createHashFromInfo(req.body.farmer, data.lot_number, data.produce, data.storage_date).call();
     const add_own = await ProduceOwnershipV2.addOwnership(req.body);//await ProduceOwnershipV2.addOwnership(req.body);
+    await smartcontracts.createProductOwner(add_own);
     const own = {
        own : add_own
     }
@@ -278,6 +281,8 @@ const changeOwnership = async(req, res) => {
     }   
     //const produce_hash = await ProduceManagement.createHashFromInfo(req.body.farmer, data.lot_number, data.produce, data.storage_date).call();
     const change_own = await ProduceOwnershipV2.changeOwnership(req.body);//await ProduceOwnershipV2.addOwnership(req.body);
+    await smartcontracts.updateProduct({hash : change_own.p_hash, owner : change_own.to, tx_hash : change_own.txHash});
+    await smartcontracts.updateProduceConsignmentOwner({p_hash : change_own.p_hash, address : change_own.to, tx_hash : change_own.txHash, type : "change"});
     const change = {
        change : change_own
     }
@@ -335,6 +340,8 @@ const sellFarmProduce = async(req, res) => {
       sale.price = sell_pr.price;
       sale.index = sell_pr.index;
       await smartcontracts.sellProduce(sale);
+      await smartcontracts.updateConsignment({hash : sell_pr.hash, owner : sell_pr.buyer, tx_hash : sell_pr.txHash});
+      await smartcontracts.updateProduceConsignmentOwner({p_hash : sell_pr.hash, address : sell_pr.buyer, tx_hash : sell_pr.txHash, type : "change"});
       res_sell.sale = sale;
       return res.send(res_sell);//uccessResponse(200, bal_axk, 'tokens available'); 
 

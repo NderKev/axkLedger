@@ -77,12 +77,13 @@ router.post(
   router.post(
     '/farmer/token',
     [
-      check('token', 'farmer token is required').exists(),
-      check('wallet_id', 'farmer wallet id is required').exists(),
-      check('address', 'farmer address id is required').exists(),
+      check('x-farmer-token', 'farmer token is required').isJWT().exists(),
+      check('wallet_id', 'farmer wallet id is required').isAlphanumeric().exists(),
+      check('address', 'farmer address id is required').isEthereumAddress().exists(),
     ],
     validateToken,
     validateAdmin,
+    validateFarmer,
     farmerController.createFarmerToken,
   );
 
@@ -95,6 +96,7 @@ router.post(
     ],
     validateToken,
     validateAdmin,
+    validateFarmer,
     refreshToken,
   );
 

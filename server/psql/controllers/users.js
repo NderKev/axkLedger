@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
 const { WelcomeMail } = require('../../mails');
 const users = require('../models/users');
+const transactions = require('../models/transactions');
 const sendEmail = require('../../helpers/sendMail');
 const nodemailer = require('nodemailer');
 const config = require('../config');
@@ -280,7 +281,7 @@ exports.generateUniqueId = function(length){
       }
     } catch (error) {
       console.error(error.message);
-      return res.status(500).json({ msg: error.message });
+      return res.status(error.status).json({ msg: error.message });
     }
   };
 
@@ -292,7 +293,58 @@ exports.generateUniqueId = function(length){
       return res.status(200).json(profile);
     } catch (err) {
       console.error(err.message);
-      return res.status(500).send('Internal server error get user profile');
+      return res.status(err.status).send('Internal server error get user profile');
     }
   };
+
+  exports.getUserTransactions = async (req, res) => {
+    try {
+      const wallet_id  = req.user.wallet_id;
+      console.log(wallet_id);
+      const txs = await transactions.getTransactionByWalletId(wallet_id);
+      return res.status(200).json(txs);
+    } catch (err) {
+      console.error(err.message);
+      return res.status(err.status).send('Internal server error get user transactions');
+    }
+  };
+
+  exports.getUserTransactionDetails = async (req, res) => {
+    try {
+      const hash  = req.body.hash;
+      console.log(hash);
+      const txs = await transactions.getTransactionByHash(hash);
+      return res.status(200).json(txs);
+    } catch (err) {
+      console.error(err.message);
+      return res.status(err.status).send('Internal server error get user transaction details');
+    }
+  };
+
+  exports.getUserCompleteTransactions = async (req, res) => {
+    try {
+      const wallet_id  = req.user.wallet_id;
+      console.log(wallet_id);
+      const txs = await transactions.getCompletedTxs(wallet_id);
+      return res.status(200).json(txs);
+    } catch (err) {
+      console.error(err.message);
+      return res.status(err.status).send('Internal server error get user complete transactions');
+    }
+  };
+
+
+  exports.getUserPendingTransactions = async (req, res) => {
+    try {
+      const wallet_id  = req.user.wallet_id;
+      console.log(wallet_id);
+      const txs = await transactions.getPendingTxsUser(wallet_id);
+      return res.status(200).json(txs);
+    } catch (err) {
+      console.error(err.message);
+      return res.status(err.status).send('Internal server error get user pending transactions');
+    }
+  };
+
+
 

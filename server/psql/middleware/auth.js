@@ -67,8 +67,8 @@ const validateFarmer = (req, res, next) => {
         console.error(err);
       } else {
          req.farmer = decoded.farmer;
-         req.token = token;
-        //req.token = token;
+         req.farmer.token = token;
+         console.log(req.farmer.token);
         next();
       }
     });
@@ -79,7 +79,7 @@ const validateFarmer = (req, res, next) => {
 };
 
 const validateFarmerExists = async(req, res, next) => {
-  const token = req.token; 
+  const token = req.farmer.token; 
   if (!token) return res.status(404).json({ msg: 'Unauthorized request!' });
   const frm_token = await farmers.getJWTFarmerToken(token);
   if (!frm_token && !frm_token.length) return res.status(403).json({ msg: 'Unexisting farmer jwt db!' });

@@ -35,43 +35,48 @@ if (!errors.isEmpty()) {
 try {
 const network = bitcoin.networks.testnet; // if we are using (testnet) then  we use networks.testnet 
 //const validInput = validateAuth(data);
-const userExists = await userModel.checkUserExists(req.user.wallet_id);
+const userExists = await userModel.checkUserExists(req.body.wallet_id);
 if (!userExists && !userExists.length) {
   return res.status(403).json({ msg : 'user doesnt exist' });
 }
 
-const walletExists = await walletModel.checkWallet(req.user.wallet_id);
+const walletExists = await walletModel.checkWallet(req.body.wallet_id);
 if (walletExists && walletExists.length) {
     return res.status(403).json({ msg : 'walletExists' });
   }
-  let auth_btc, data;
-  const adm = req.admin.role;
-  const usr = req.user.role;
-  if (usr !== 'admin' && adm !== 'admin'){
-    auth_btc = await authenticateUser(req, res);
-    data.user = req.user.user;
-    data.pass = req.body.passphrase;
-  }
-  else {
-    auth_btc = await authenticateAdmin(req, res);
-    data.user = req.admin.user;
-    data.pass = req.body.pin;
-  }
+  let auth_btc = {}, data = {}, pin_set = true;
+  const adm = req.admin;
+  const usr = req.user;
 
-const check_pin = await getUserPin(req, res);
-if (check_pin.pin && check_pin.msg === 'PinSet'){
-     if (usr !== 'admin' && adm !== 'admin'){
-      await authenticatePin(req, res);
-     }
-     else {
-      await authenticatePinAdmin(req, res)
-     }  
-}
+  const check_pin = await userModel.fetchUserPin(req.body.wallet_id);
+  const auth = check_pin[0].pin;
+  if (typeof auth === 'undefined' || auth === null || auth == 'null'){
+    pin_set = false;
+   }
+  if (pin_set == true && auth !== 'null' && usr){
+        await authenticatePin(req, res);
+        auth_btc = await authenticateUser(req, res);
+        data.user = usr.user;
+        data.wallet_id = usr.wallet_id;
+        data.pass = req.body.passphrase;
+   }
+  if (pin_set == true  && auth !== 'null' && adm) {
+        await authenticatePinAdmin(req, res)
+        auth_btc = await authenticateAdmin(req, res);
+        data.user = adm.user;
+        data.wallet_id = adm.wallet_id;
+        data.pass = req.body.pin;
+  }  
+
+
 let _user = data.user;
 let _pass = data.pass;
 let _walletid = req.body.wallet_id;
 const str = _pass + _user;
-
+console.log(auth_btc.comb +" : vs : "+ str);
+if (auth_btc.comb !== str || _walletid !== data.wallet_id){
+  return res.status(403).json({ msg : 'user combination  mismatch' });
+}
 // Derivation path (Deriving the bitcoin address from a BI49)
 const path =`m/49'/1'/0'/0`; // we use  `m/49'/1'/0'/0` for testnet network
 const wallet = {};

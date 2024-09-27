@@ -782,7 +782,15 @@ const psbtTransactionBuildMain = async(sendFrom, keystore, key, sendTo, amount, 
         return res.status(400).json({ errors: errors.array() });
      }
   try {
-    if (req.body.wallet_id !== req.user.wallet_id) {
+    const admn = req.admin, usr = req.user;
+    let _wallet_id;
+    if (usr){
+      _wallet_id = usr.wallet_id;
+    }
+    else{
+      _wallet_id = admn.wallet_id;
+    }
+    if (req.body.wallet_id !== _wallet_id) {
       return res.status(403).json({ msg : 'user wallet id mismatch' });
     }
      const response = await getTransactions(req.body.address, token);
