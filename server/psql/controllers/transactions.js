@@ -1,5 +1,5 @@
 const { validationResult } = require('express-validator');
-const {isAddress} = require("web3-validator");
+//const {isAddress} = require("web3-validator");
 const transactions = require('../models/transactions');
 
 exports.createTransaction = async (req, res) => {
@@ -268,7 +268,7 @@ exports.createTransaction = async (req, res) => {
         walletid = adm.wallet_id
       }
       console.log(walletid);
-      const mode = req.params.mode;
+      const mode = req.body.mode;
       const trans = await transactions.getUserTxsByMode({wallet_id : walletid, mode : mode});
       return res.status(200).json(trans);
     } catch (err) {

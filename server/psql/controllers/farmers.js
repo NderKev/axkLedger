@@ -73,7 +73,7 @@ const pinHash = require('sha256');
     }
   }; **/
 
-  exports.createFarmerToken = async (req, res) => {
+  exports.updateFarmerToken = async (req, res) => {
     const errors = validationResult(req);
   
     if (!errors.isEmpty()) {
@@ -84,50 +84,39 @@ const pinHash = require('sha256');
     if (!validAddress || validAddress === 'null'|| typeof validAddress === 'undefined'){
      return res.status(401).json({ msg: 'Invalid address!' });
     } 
-    const { address, wallet_id, token} = req.body;
+    const { address } = req.body;
     //const token = req.farmer.token;
     //if (!token) return res.status(403).json({ msg: 'Unauthorized request!' });
     try {
-        const userExists = await farmers.checkFarmerExists(address);
-        if (!userExists && !userExists.length) {
+        const farmerExists = await farmers.getFarmerToken(address);
+        if (!farmerExists && !farmerExists.length) {
           return res.status(403).json({ msg : 'farmer doesnt exist' });
         }
-        if (wallet_id !== userExists[0].wallet_id) {
-          return res.status(403).json({ msg : 'farmer wallet id mismatch' });
-        }
+        
+        const token = farmerExists[0].token;
         const tokenExists = await farmers.getCurrentFarmerToken({address : address, token : token});
+        
         if (tokenExists && tokenExists.length) {
-          if (token !== tokenExists[0].token) {
-            return res.status(403).json({ msg : 'farmer token mismatch' });
+          console.log(tokenExists[0].wallet_id);
+          if (farmerExists[0].wallet_id !== tokenExists[0].wallet_id) {
+            return res.status(403).json({ msg : 'farmer details mismatch' });
           }
           else {
           var timeNow = Math.floor(Date.now() / 1000);
           if (tokenExists[0].expiry <= timeNow){
-            const token_new = await farmers.genFarmerToken(tokenExists[0].address);
+            const token_new = await farmers.genFarmerToken(address);
             await farmers.updateFarmerToken(token_new);
             return res.json({token : token_new, msg : 'token updated'});
           }
+          else {
           let ver_token = await farmers.verifyToken(token);
           return res.json({token : ver_token})
-        }     
-       }
-        else {
-          let auth_token = await farmers.verifyToken(token);
-          if (auth_token.valid == true && auth_token.message === "valid"){
-            await farmers.createFarmerToken(auth_token);//{address : auth_token.address, wallet_id : auth_token.wallet_id, token : auth_token.token, expiry : auth_token.expiry}
-            return res.json({token: auth_token, msg : 'token created'});
           }
-          /** if (auth_token.valid == true && auth_token.message === "expired"){
-            const token_exp = await farmers.genFarmerToken(auth_token.address);
-            await farmers.updateFarmerToken(token_exp);
-            return res.json({token : token_exp, msg : 'token updated'});
-          } **/
-          return res.json({token : auth_token, msg : 'token creation invalid'});
-        }
-        
+        }     
+       }  
     }catch (error) {
         console.error(error.message);
-        return res.status(500).json({ msg: 'Internal server error create farmer token' });
+        return res.status(500).json({ msg: 'Internal server error update farmer token' });
     }
 }
 

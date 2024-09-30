@@ -10,7 +10,7 @@ const farmerModel = require('../../server/psql/models/farmers');
 const walletModel = require('../../server/psql/models/wallet');
 const smartcontracts = require('../../server/psql/models/smartcontracts');
 const {successResponse, errorResponse} = require('../eth/libs/response');
-const { min } = require('bn.js');
+//const { min } = require('bn.js');
 
 const logStruct = (func, error) => {
     return {'func': func, 'file': 'supplychain', error}
@@ -22,7 +22,6 @@ const logStruct = (func, error) => {
       return res.status(400).json({ errors: errors.array() });
     }
     try{
-      //let address = req.farmer.address;
       const farmerExists = await farmerModel.checkFarmerExists(req.farmer.address);
       if (!farmerExists && !farmerExists.length) {
         return res.status(403).json({ msg : 'farmerNotExists' });
@@ -36,13 +35,9 @@ const logStruct = (func, error) => {
   }
 
   router.get('/reg/v2', [
-    check('address', 'Please include farmer address').not().isEmpty(),
-    check('name', 'Please include farmer name').not().isEmpty(),
-    check('location', 'Please include farmer location').not().isEmpty(),
-    check('x-farmer-token', 'Please include the farmer auth token').not().isEmpty()
+    check('x-farmer-token', 'Please include the farmer auth token').isJWT().not().isEmpty()
   ] , validateFarmer, async(req, res, next) => {
-    console.log(req.body);
-    //const {to, amount} = req.body
+ 
     const tx = await registerFarmer(req, res);
   
     return res.status(tx.status).send(tx.data);
@@ -64,12 +59,9 @@ const verifyFarmer = async(req, res) => {
   }
 
   router.get('/ver/v2', [
-    check('address', 'Please include farmer address').not().isEmpty(),
-    check('wallet_id', 'Please include farmer wallet_id').not().isEmpty(),
-    check('x-farmer-token', 'Please include the farmer auth token').not().isEmpty()
+    check('x-farmer-token', 'Please include the farmer auth token').isJWT().not().isEmpty()
   ], validateFarmer, async(req, res, next) => {
-    console.log(req.body);
-    //const {to, amount} = req.body
+  
     const ver = await verifyFarmer(req, res);
   
     return res.status(ver.status).send(ver.data);
@@ -116,34 +108,43 @@ const addFarmProduceV2 = async(req, res) => {
       return res.status(400).json({ errors: errors.array() });
     }
   try{
-    let consignment = {};   
+    let consignment = {};
+    if (req.body.farmer !== req.farmer.address) {
+      return res.status(403).json({ msg : 'farmer address mismatch' });
+    }   
     const farmerExists = await farmerModel.checkFarmerExists(req.body.farmer);
     if (!farmerExists && !farmerExists.length) {
       return res.status(403).json({ msg : 'farmerNotExists'});
     } 
-   
+    
     consignment.wallet_id = farmerExists[0].wallet_id;
     consignment.farmer = req.body.farmer;
     consignment.owner = req.body.farmer;
+    
     const add_prd = await ProduceTraceabilityV8.addFarmProduce(req.body);
-    const product = {
-       product : add_prd
-    }
-    const consignment_hash = await ProduceTraceabilityV8.getConsignmentHash(add_prd.lot_number, add_prd.farmer);
-    consignment.consignment_hash = consignment_hash;
-    const p_hash = await ProduceTraceabilityV8.getProduceHash(add_prd.lot_number, add_prd.farmer);
-    consignment.tx_hash = p_hash;
+    
+    //const consignment_hash = await ProduceManagement.createHashFromInfo(add_prd.farmer, add_prd.lot_number, add_prd.weight, add_prd.storage_date);
+    //const p_hash = await ProduceManagement.createHashFromInfo(add_prd.farmer, add_prd.lot_number, add_prd.produce, add_prd.storage_date);
+    //ProduceTraceabilityV8.getConsignmentHash(add_prd.lot_number, add_prd.farmer);
+    consignment.consignment_hash = add_prd.consignment_hash;
+    //const p_hash = await ProduceTraceabilityV8.getProduceHash(add_prd.lot_number, add_prd.farmer);
+    consignment.tx_hash = add_prd.txHash;
+    consignment.produce_hash = add_prd.produce_hash;
     consignment.lot_number = add_prd.lot_number;
     consignment.storage_date = add_prd.storage_date;
     consignment.weight = add_prd.weight;
     consignment.quantity = add_prd.quantity;
     await smartcontracts.createConsignment(consignment);
     await smartcontracts.createConsignmentOwner(consignment);
-    product.consignment = consignment;
-    return res.send(product); //successResponse(200, bal_axk, 'balance'); 
+    //await smartcontracts.createConsignmentOwner(consignment);
+    const product = {
+      product : add_prd,
+      consignment : consignment
+   }
+    return successResponse(200, product, 'addFarmProduce v2'); 
   } catch (error) {
   console.error('error -> ', logStruct('addFarmProduce v2', error))
-  return res.send(error.status);
+  return errorResponse(error.status, error.message);
 }
 }
 
@@ -153,13 +154,14 @@ router.post('/add/v2', [
   check('weight', 'Please include the weight').not().isEmpty(),
   check('quantity', 'Please include the quantity').isInt().not().isEmpty(),
   check('agents', 'Please include the agents array').isArray().not().isEmpty(),
-  check('x-auth-token', 'Please include the authentication token').not().isEmpty()
+  check('x-auth-token', 'Please include the authentication token').isJWT().not().isEmpty(),
+  check('x-farmer-token', 'Please include the farmer token').isJWT().not().isEmpty(),
 ], validateToken, validateAdmin, validateFarmer, async(req, res, next) => {
   console.log(req.body);
   //const {to, amount} = req.body
   const product = await addFarmProduceV2(req, res);
 
-  return product;
+  return res.status(product.status).json(product.data);
 });
 
 
@@ -170,7 +172,10 @@ const registerProduce = async(req, res) => {
       return res.status(400).json({ errors: errors.array() });
     }
   try{
-    let product = {}; 
+    let product = {};
+    if (req.body.farmer !== req.farmer.address) {
+      return res.status(403).json({ msg : 'farmer address mismatch' });
+    } 
     const farmerExists = await farmerModel.checkFarmerExists(req.body.farmer);
     if (!farmerExists && !farmerExists.length) {
       return res.status(403).json({ msg : 'farmerNotExists'});
@@ -186,9 +191,7 @@ const registerProduce = async(req, res) => {
     //part_array.push(web3.utils.soliditySha3(accounts[0], web3.utils.fromAscii(lote_numbers[i]),web3.utils.fromAscii(part_types[i]), web3.utils.fromAscii(creation_date)))
     //const produce_hash = await ProduceManagement.createHashFromInfo(req.body.farmer, data.lot_number, req.body.produce, data.creation_date).call();
     const reg_prd = await ProduceManagement.registerProduce(req.body);//await ProduceOwnershipV2.addOwnership(req.body);
-    const reg = {
-       reg : reg_prd
-    }
+    
     product.produce_hash = reg_prd.produce_hash;
     product.tx_hash = reg_prd.txHash;
     product.lot_number = reg_prd.lot_number;
@@ -196,11 +199,14 @@ const registerProduce = async(req, res) => {
     product.produce_type = reg_prd.produce_type;
     await smartcontracts.createProduce(product);
     //await smartcontracts.createProductOwner(product);
-    req.product = product;
-    return res.send(reg); //successResponse(200, bal_axk, 'balance'); 
+    const reg = {
+      reg : reg_prd,
+      product : product
+   }
+    return successResponse(200, reg, 'registerProduce V2'); 
   } catch (error) {
   console.error('error -> ', logStruct('registerProduce V2', error))
-  return res.send(error.status);
+  return errorResponse(error.status, error.message);
 }
 }
 
@@ -208,15 +214,15 @@ router.post('/reg/product/v2',  [
   check('farmer', 'Please include farmer address').not().isEmpty(),
   check('consignments', 'Please include produce consignments').isArray().not().isEmpty(),
   check('produce_type', 'Please include the produce type').not().isEmpty(),
-  check('x-auth-token', 'Please include the authentication token').not().isEmpty(),
-  check('x-auth-token', 'Please include the authentication token').not().isEmpty(),
+  check('x-auth-token', 'Please include the authentication token').isJWT().not().isEmpty(),
+  check('x-farmer-token', 'Please include the farmer token').isJWT().not().isEmpty(),
 ] , validateToken, validateAdmin, validateFarmer, 
 async(req, res, next) => {
   console.log(req.body);
   //const {to, amount} = req.body
   const reg = await registerProduce(req, res);
 
-  return reg;
+  return res.status(reg.status).send(reg.data);
 });
 
 const addOwnership = async(req, res) => {
@@ -225,7 +231,10 @@ const addOwnership = async(req, res) => {
       return res.status(400).json({ errors: errors.array() });
   }
   try{
-    //let product_owner = {}; 
+    //let product_owner = {};
+    if (req.body.farmer !== req.farmer.address) {
+      return res.status(403).json({ msg : 'farmer address mismatch' });
+    } 
     const farmerExists = await farmerModel.checkFarmerExists(req.body.farmer);
     if (!farmerExists && !farmerExists.length) {
       return res.status(403).json({ msg : 'farmerNotExists'});
@@ -245,10 +254,10 @@ const addOwnership = async(req, res) => {
     //product_owner.farmer = req.body.farmer;
     //product_owner.owner = req.body.farmer;
 
-    return res.send(own); //successResponse(200, bal_axk, 'balance'); 
+    return successResponse(200, own, 'addOwnership V2'); 
   } catch (error) {
   console.error('error -> ', logStruct('addOwnership V2', error))
-  return res.send(error.status);
+  return errorResponse(error.status, error.message);
 }
 }
 
@@ -262,7 +271,7 @@ router.post('/own/product/v2', [
   //const {to, amount} = req.body
   const own = await addOwnership(req, res);
 
-  return own;
+  return res.status(own.status).send(own.data);
 });
 
 const changeOwnership = async(req, res) => {
@@ -278,7 +287,9 @@ const changeOwnership = async(req, res) => {
     const produceExists = await smartcontracts.checkProduceHash(req.body.p_hash);
     if (!produceExists && !produceExists.length) {
       return res.status(403).json({ msg : 'produceNotExists'});
-    }   
+    }
+    
+    req.body.owner = produceExists[0].owner;
     //const produce_hash = await ProduceManagement.createHashFromInfo(req.body.farmer, data.lot_number, data.produce, data.storage_date).call();
     const change_own = await ProduceOwnershipV2.changeOwnership(req.body);//await ProduceOwnershipV2.addOwnership(req.body);
     await smartcontracts.updateProduct({hash : change_own.p_hash, owner : change_own.to, tx_hash : change_own.txHash});
@@ -286,25 +297,24 @@ const changeOwnership = async(req, res) => {
     const change = {
        change : change_own
     }
-    return res.send(change); //successResponse(200, bal_axk, 'balance'); 
+    return successResponse(200, change, 'changeOwnership V2'); 
   } catch (error) {
   console.error('error -> ', logStruct('changeOwnership V2', error))
-  return res.send(error.status);
+  return errorResponse(error.status, error.message)
 }
 }
 
 router.post('/change/product/v2', [
-  check('owner', 'Please include the current owner address').not().isEmpty(),
   check('to', 'Please include the new owner address').not().isEmpty(),
   check('p_hash', 'Please include produce hash').not().isEmpty(),
   check('op_type', 'Please include the operation type').isInt().not().isEmpty(),
   check('x-auth-token', 'Please include the authentication token').not().isEmpty()
-] ,validateToken, async(req, res, next) => {
+] , validateToken, async(req, res, next) => {
   console.log(req.body);
   //const {to, amount} = req.body
   const change = await changeOwnership(req, res);
 
-  return change;
+  return res.status(change.status).send(change.data);
 });
 
 const sellFarmProduce = async(req, res) => {
@@ -314,25 +324,26 @@ const sellFarmProduce = async(req, res) => {
     }
     try{
       let sale = {};
-      sale.wallet_id = req.farmer.wallet_id;
-      const consArray = await ProduceManagement.consignments(req.body.hash);
-      if (!consArray && !consArray.farmer) {
+      const _walletid = await smartcontracts.getConsignmentByHash(req.body.hash);
+      if (!_walletid && !_walletid.length) {
         return res.status(403).json({ msg : 'hashNotExists'});
       } 
-      if (consArray.farmer !== req.farmer.address){
-        return res.status(403).json({ msg : 'consignment hash address mismatch'});
+      sale.wallet_id = _walletid[0].wallet_id;
+      /** const consArray = await ProduceManagement.consignments(req.body.hash);
+      if (!consArray && !consArray.farmer) {
+        return res.status(403).json({ msg : 'hashNotExists'});
       }
-      sale.farmer = req.farmer.address;
+      console.log(consArray)
+      if (consArray[0] !== _walletid){
+        return res.status(403).json({ msg : 'consignment hash address mismatch'});
+      } **/
+      sale.farmer = _walletid[0].farmer;
       const buyerExists = await walletModel.isEVM(req.body.buyer);
       if (!buyerExists && !buyerExists.length) {
         return res.status(403).json({ msg : 'buyerNotExists'});
       } 
       sale.buyer = req.body.buyer;
       const sell_pr = await ProduceTraceabilityV8.sellFarmProduce(req.body);
-      
-      let res_sell = {
-         sell : sell_pr
-      }
       sale.tx_hash = sell_pr.txHash;
       sale.hash = sell_pr.hash;
       sale.timestamp = sell_pr.timestamp;
@@ -342,29 +353,30 @@ const sellFarmProduce = async(req, res) => {
       await smartcontracts.sellProduce(sale);
       await smartcontracts.updateConsignment({hash : sell_pr.hash, owner : sell_pr.buyer, tx_hash : sell_pr.txHash});
       await smartcontracts.updateProduceConsignmentOwner({p_hash : sell_pr.hash, address : sell_pr.buyer, tx_hash : sell_pr.txHash, type : "change"});
-      res_sell.sale = sale;
-      return res.send(res_sell);//uccessResponse(200, bal_axk, 'tokens available'); 
+      const res_sell = {
+        sell : sell_pr,
+        sale : sale
+     }
+      return successResponse(200, res_sell, 'sellFarmProduce v2'); 
 
     } catch (error) {
     console.error('error -> ', logStruct('sellFarmProduce v2', error))
-    return res.send(error.status);//errorResponse(error.status, error.message);
+    return errorResponse(error.status, error.message);
   }
   }
 
   router.post('/sell/v2',[
     check('buyer', 'Please include buyer address').not().isEmpty(),
-    check('farmer', 'Please include farmer address').not().isEmpty(),
-    check('wallet_id', 'Please include farmer wallet id').not().isEmpty(),
     check('hash', 'Please include produce consignment hash').not().isEmpty(),
     check('amount', 'Please include the produce sale amount').isInt().not().isEmpty(),
     check('price', 'Please include the produce sale price').isInt().not().isEmpty(),
-    check('x-auth-token', 'Please include the authentication token').not().isEmpty()
-  ], validateToken, validateFarmer, async(req, res, next) => {
+    check('x-auth-token', 'Please include the authentication token').isJWT().not().isEmpty()
+  ], validateToken,  async(req, res, next) => {
     //console.log(req.body);
     //const {to, amount} = req.body
     const sell = await sellFarmProduce(req, res);
   
-    return sell;//res.status(balance.status).send(balance.data);
+    return res.status(sell.status).send(sell.data);
 });
 
 const getFarmer = async(req, res) => {
@@ -393,7 +405,7 @@ const getFarmer = async(req, res) => {
     //const {to, amount} = req.body
     const farmer = await getFarmer(req, res);
   
-    return farmer;//res.status(balance.status).send(balance.data);
+    return res.status(200).json(farmer);//res.status(balance.status).send(balance.data);
 });
 
 const getProduce = async(req, res) => {
@@ -415,7 +427,7 @@ const getProduce = async(req, res) => {
     //const {to, amount} = req.body
     const produce = await getProduce(req, res);
   
-    return produce;//res.status(balance.status).send(balance.data);
+    return res.status(200).json(produce);//res.status(balance.status).send(balance.data);
 });
 
 const getProduceHash = async(req, res) => {
@@ -663,16 +675,16 @@ const farmers = async(req, res) => {
       farmer : farmers_array,
       data : farmer_data
     }
-    return res.json(farmer_details);
+    return successResponse(200, farmer_details, 'farmers v2');
   } catch (error) {
   console.error('error -> ', logStruct('farmers v2', error))
-  return res.send(error.status);
+  return errorResponse(error.status, error.message);
 }
 }
 
 router.get('/farmers/v2', validateToken, async(req, res, next) => {
   const _farmers =  await farmers(req, res);
-  return res.send(_farmers);
+  return res.status(_farmers.status).send(_farmers.data);;
 });
 
 
@@ -689,16 +701,16 @@ const produces = async(req, res) => {
       index : index,
       data : produces_array
     }
-    return res.send(produce_details);
+    return successResponse(200, produce_details, 'produces v2');
   } catch (error) {
   console.error('error -> ', logStruct('produces v2', error))
-  return res.send(error.status);
+  return errorResponse(error.status, error.message);
 }
 }
 
 router.get('/produces/v2', validateToken, async(req, res, next) => {
   const _produces =  await produces(req, res);
-  return res.send(_produces);
+  return res.status(_produces.status).send(_produces.data);
 });
 
 const sales = async(req, res) => {
@@ -714,16 +726,16 @@ const sales = async(req, res) => {
       index : index,
       data : sales_array
     }
-    return res.send(sales_details);
+    return successResponse(200, sales_details, 'sales v2');
   } catch (error) {
   console.error('error -> ', logStruct('sales v2', error))
-  return res.send(error.status);
+  return errorResponse(error.status, error.message);
 }
 }
 
 router.get('/sales/v2', validateToken, async(req, res, next) => {
   const _sales =  await sales(req, res);
-  return res.send(_sales);
+  return res.status(_sales.status).send(_sales.data);;
 });
 
 module.exports = router; 

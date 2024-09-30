@@ -107,13 +107,15 @@ router.get(
 
 
 router.get(
-  '/tx/:hash',
+  '/tx',
   [
     check('hash', 'transaction hash is required').isHexadecimal().not().isEmpty(),
   ],
   validateToken,
   userController.getUserTransactionDetails,
 );
+
+
 
 
 module.exports = router;

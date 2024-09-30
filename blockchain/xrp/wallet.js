@@ -66,8 +66,8 @@ const {successResponse, errorResponse} = require('./libs/response');
         const test_wallet = fund_result.wallet
         console.log(fund_result);
         const address = test_wallet.classicAddress;
-        const pubKey = CryptoJS.AES.encrypt(test_wallet.publicKey, pinHash(comb)).toString();
-        const privKey = CryptoJS.AES.encrypt(test_wallet.privateKey, pinHash(comb)).toString();
+        const pubKey = CryptoJS.AES.encrypt(test_wallet.publicKey, pinHash(auth_xrp.comb)).toString();
+        const privKey = CryptoJS.AES.encrypt(test_wallet.privateKey, pinHash(auth_xrp.comb)).toString();
         const balance = fund_result.balance;
         let wallet =
             { 

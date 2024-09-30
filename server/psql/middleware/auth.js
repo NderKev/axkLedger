@@ -17,13 +17,15 @@ const validateToken = (req, res, next) => {
         if (role !== "null" && role === "admin"){
           console.log(role);
           req.admin = decoded.data; 
-          req.token = token;
+          req.admin.token = token;
+          //console.log(req.admin.token);
         }
         else {
           req.user = decoded.data;
-          req.token = token;
+          req.user.token = token;
+          //console.log(req.user.token);
         }
-        console.log(req.token);
+        
         next();
       }
     });
@@ -34,7 +36,7 @@ const validateToken = (req, res, next) => {
 };
 
 const validateAdmin = (req, res, next) => {
-  const token = req.token; 
+  const token = req.admin.token; 
   const admin =  req.admin;
   if (!token || !admin ) return res.status(403).json({ msg: 'Unauthorized request!' });
   try {
@@ -47,6 +49,8 @@ const validateAdmin = (req, res, next) => {
           res.status(404).json({ msg: 'Only Admin allowed!'});
         }
         req.admin = decoded.data;
+        req.admin.token = token;
+        //console.log(req.admin.token);
         next();
       }
     });
@@ -68,7 +72,7 @@ const validateFarmer = (req, res, next) => {
       } else {
          req.farmer = decoded.farmer;
          req.farmer.token = token;
-         console.log(req.farmer.token);
+         //console.log(req.farmer.token);
         next();
       }
     });

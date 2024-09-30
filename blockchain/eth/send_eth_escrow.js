@@ -15,7 +15,7 @@ const { hdkey, Wallet } = require('@ethereumjs/wallet');
 const transactionModel = require('../../server/psql/models/transactions');
 const walletModel = require('../../server/psql/models/wallet');
 const { check, validationResult } = require('express-validator');
-const {validateToken} = require('../../server/psql/middleware/auth');
+const {validateToken, validateAdmin} = require('../../server/psql/middleware/auth');
 const {authenticateUser, decryptPrivKey} = require('../../server/psql/controllers/auth');
 const {isAddress} = require("web3-validator");
 const usdtContractAbi = require('./libs/usdtContractAbi');
@@ -75,9 +75,31 @@ const send_ether_to_escrow = async(req, res) => {
     return res.status(400).json({ errors: errors.array() });
     }
     try {
-      const auth_data = await authenticateUser(req, res);
-      //console.log(auth_data);
-     //const btc_balance = wall_bal[0].balance;
+      const usr = req.user, adm = req.admin;
+      let walletid;
+      if (usr){
+          walletid = usr.wallet_id;
+      }
+      else {
+          walletid = adm.wallet_id
+      }
+      if (req.body.wallet_id !== walletid) {
+        return res.status(403).json({ msg : 'user wallet id mismatch' });
+      }
+      let auth_data = {}, pin_set = true;
+      const check_pin = await userModel.fetchUserPin(req.body.wallet_id);
+      const auth = check_pin[0].pin;
+       if (typeof auth === 'undefined' || auth === null || auth == 'null'){
+         pin_set = false;
+       }
+      if (pin_set == true && auth !== 'null' && adm) {
+       await authenticatePinAdmin(req, res);
+       auth_data = await authenticateAdmin(req, res);
+      }
+      if (pin_set == true && auth !== 'null' && usr) {
+       await authenticatePin(req, res);
+       auth_data = await authenticateUser(req, res);
+      }
      const amount_eth = Number(req.body.amount);
      console.log(amount_eth);
      //if (amount_eth < 0)
@@ -118,7 +140,7 @@ const send_ether_to_escrow = async(req, res) => {
       const p_key = decryptPrivKey(auth_data);
       const toAddress = req.body.to || null;
       const validTo = isAddress(toAddress);
-      let tx = { from: auth_data.evm.address , to: "", value: ethAmount, gas: gasLimit, gasPrice: _gasprice, chainId: 11155111};
+      let tx = { from: auth_data.evm.address , to: "0x0", value: ethAmount, gas: gasLimit, gasPrice: _gasprice, chainId: 11155111};
       if (!toAddress || !validTo || toAddress === null){
         tx.to = process.env.ESCROW_ACCOUNT_ETH;
       }
@@ -127,9 +149,7 @@ const send_ether_to_escrow = async(req, res) => {
       }
 
       console.log(tx);
-      //const tx = 
       const signedTx = await web3.eth.accounts.signTransaction(tx, p_key.key);
-      //web3.eth.signTransaction()
       const txHash = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
       console.log("tx Hash :" + txHash.transactionHash);
       const txObj = {};
@@ -193,13 +213,31 @@ router.post('/send/transfer', [
   return res.status(response.status).send(response);
 });
 
+router.post('/send/adm', [
+  check('wallet_id', 'Wallet id is required').not().isEmpty(),
+  check('pin', 'Please include the pin').isNumeric().not().isEmpty(),
+  check('amount', 'Amount is required').isNumeric().not().isEmpty(),
+  check('to', 'Please include a destination address').isEthereumAddress().not().isEmpty(),
+], validateToken, validateAdmin, async(req, res, next) => {
+  const response = await send_ether_to_escrow(req, res);
+  return res.status(response.status).send(response);
+});
+
 const check_eth_tx_status = async(req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
   return res.status(400).json({ errors: errors.array() });
   }
   try {
-  if (req.body.wallet_id !== req.user.wallet_id) {
+  const usr = req.user, adm = req.admin;
+  let walletid;
+  if (usr){
+        walletid = usr.wallet_id;
+  }
+  else {
+        walletid = adm.wallet_id
+  }
+  if (req.body.wallet_id !== walletid) {
       return res.status(403).json({ msg : 'user wallet id mismatch' });
     }
     
@@ -231,18 +269,6 @@ router.post('/send/escrow/status', validateToken,  [
 
 const check_eth_tx_status_ext = async(req, res) => {
   try {
-  if (req.body.wallet_id !== req.user.wallet_id) {
-      return res.status(403).json({ msg : 'user wallet id mismatch' });
-  }
-  const comb = req.body.passphrase + req.user.user;
-  const _passphrase = await walletModel.getWallet(req.body.wallet_id);
-  const _evm = await walletModel.getEVM(req.body.wallet_id);
-  const matchPwd = bcrypt.compareSync(String(comb), _passphrase[0].passphrase);
-
-    if (!matchPwd) {
-      return errorResponse(401,"passphrase_wrong", {message : "wrongPassphrase"});
-    }
-    
   const web3 = new Web3.providers.HttpProvider(provider.sepolia);
   const receipt = await web3.eth.getTransactionReceipt(data.txHash);
   const amount = web3.utils.toWei(data.amount, "wei");

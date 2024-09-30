@@ -17,8 +17,8 @@
    const { bindAll } = require('lodash');
    const transactions = require('../../server/psql/models/transactions');
    const { check, validationResult } = require('express-validator');
-   const { validateToken } = require('../../server/psql/middleware/auth');
-   const {authenticateUser, getUserPin, authenticatePin} = require('../../server/psql/controllers/auth');
+   const { validateToken, validateAdmin } = require('../../server/psql/middleware/auth');
+   const {authenticateUser, authenticateAdmin, authenticatePin, authenticatePinAdmin} = require('../../server/psql/controllers/auth');
    const walletModel = require('../../server/psql/models/wallet');
    require('dotenv').config({ path: '../../.env'});
    const logStruct = (func, error) => {
@@ -335,18 +335,36 @@
         return res.status(400).json({ errors: errors.array() });
      }
       try {
-        if (req.body.wallet_id !== req.user.wallet_id) {
+        const usr = req.user, adm = req.admin;
+        let walletid;
+        if (usr){
+          walletid = usr.wallet_id;
+        }
+        else {
+          walletid = adm.wallet_id
+        }
+        if (req.body.wallet_id !== walletid) {
           return res.status(403).json({ msg : 'user wallet id mismatch' });
         }
        //sendFrom, keystr, sendTo, amount,  indexer, keyP, passphrase
        const TESTNET = bitcoin.networks.testnet;
-       const saltRounds = 10;
+       //const saltRounds = 10;
        const psbt = new bitcoin.Psbt({network : TESTNET});
-       const auth_btc = await authenticateUser(req, res);
-       const check_pin = await getUserPin(req, res);
-       if (check_pin.pin && check_pin.msg === 'PinSet'){
-          await authenticatePin(req, res);
+       let auth_btc = {}, pin_set = true;
+       const check_pin = await userModel.fetchUserPin(req.body.wallet_id);
+       const auth = check_pin[0].pin;
+        if (typeof auth === 'undefined' || auth === null || auth == 'null'){
+          pin_set = false;
+        }
+       if (pin_set == true && auth !== 'null' && adm) {
+        await authenticatePinAdmin(req, res);
+        auth_btc = await authenticateAdmin(req, res);
        }
+       if (pin_set == true && auth !== 'null' && usr) {
+        await authenticatePin(req, res);
+        auth_btc = await authenticateUser(req, res);
+       }
+   
        let keyWif = CryptoJS.AES.decrypt(auth_btc.btc.wif, pinHash(auth_btc.comb));
        const kyWif = keyWif.toString(CryptoJS.enc.Utf8);
        let keystrl = CryptoJS.AES.decrypt(auth_btc.wallet.mnemonic, pinHash(auth_btc.comb));
@@ -880,6 +898,17 @@ const psbtTransactionBuildMain = async(sendFrom, keystore, key, sendTo, amount, 
   check('wallet_id', 'Wallet id is required').not().isEmpty(),
   check('amount', 'Please include a amount').isInt().not().isEmpty(),
   check('passphrase', 'Please include a passphrase').isNumeric().not().isEmpty(),
+  check('to', 'Please include a destination address').isBtcAddress().not().isEmpty(),
+], async(req, res, next) => {
+  const response = await psbtTransactionBuilderCr(req, res);
+  
+  return res.status(response.status).send(response.data)
+ });
+
+ router.post('/test/sendBTC/adm', validateToken, validateAdmin, [
+  check('wallet_id', 'Wallet id is required').not().isEmpty(),
+  check('amount', 'Please include a amount').isInt().not().isEmpty(),
+  check('pin', 'Please include a pin').isNumeric().not().isEmpty(),
   check('to', 'Please include a destination address').isBtcAddress().not().isEmpty(),
 ], async(req, res, next) => {
   const response = await psbtTransactionBuilderCr(req, res);

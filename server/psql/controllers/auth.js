@@ -254,13 +254,14 @@ exports.login = async (req, res) => {
   exports.updateUserPin = async(req, res) => {
     try {
       const usr = req.user, adm = req.admin;
-      let currPin, prevPin, newPin, strPin, strNew, wid;
+      let currPin, prevPin, newPin, strPrev, strPin, strNew, wid;
       if (usr){
           await this.authenticatePin(req, res);
           currPin = req.body.new_passphrase;
           prevPin = req.body.passphrase + usr.wallet_id + usr.user;
           newPin = currPin + usr.wallet_id + usr.user;
           strPin = currPin + usr.user;
+          strPrev = req.body.passphrase + usr.user;
           if (prevPin == newPin){
             return res.status(403).json({ msg : 'new pin cannot match the old pin user' });
           }
@@ -268,7 +269,6 @@ exports.login = async (req, res) => {
           strPin = pinHash(strPin);
           strNew = CryptoJS.AES.encrypt(newPin, strPin).toString();
           wid = usr.wallet_id;
-          
       }
       else {
           await this.authenticatePinAdmin(req, res);
@@ -276,6 +276,7 @@ exports.login = async (req, res) => {
           prevPin = req.body.pin + adm.wallet_id + adm.user;;
           newPin = currPin + adm.wallet_id + adm.user;
           strPin = currPin + adm.user;
+          strPrev = req.body.passphrase + adm.user;
           if (prevPin == newPin){
             return res.status(403).json({ msg : 'new pin cannot match the old pin amin' });
           }
@@ -283,6 +284,38 @@ exports.login = async (req, res) => {
           strPin = pinHash(strPin);
           strNew = CryptoJS.AES.encrypt(newPin, strPin).toString();
           wid = adm.wallet_id;
+      }
+      //const is_wallet = await walletModel.getBTC(wid);
+      const init_wallet = await walletModel.getWallet(wid);
+      if (init_wallet.length > 0){
+      const init_key = CryptoJS.AES.decrypt(init_wallet[0].mnemonic, pinHash(strPrev));
+      const decr_key = init_key.toString(CryptoJS.enc.Utf8);
+      const new_key = CryptoJS.AES.encrypt(decr_key, pinHash(strPin)).toString();
+      const new_passphrase = bcrypt.hashSync(String(strPin), 10);
+      await walletModel.updateWallet({wallet_id : wid, key : new_key, passcode : new_passphrase});
+      }
+      const is_btc = await walletModel.getBTC(wid);
+      if (is_btc.length > 0){
+        const prev_wif = CryptoJS.AES.decrypt(is_btc[0].wif, pinHash(strPrev));
+        const prev_wif_key = prev_wif.toString(CryptoJS.enc.Utf8);
+        const new_wif = CryptoJS.AES.encrypt(prev_wif_key, pinHash(strPin)).toString();
+        const prev_xpriv = CryptoJS.AES.decrypt(is_btc[0].xpriv, pinHash(strPrev));
+        const prev_xpriv_key = prev_xpriv.toString(CryptoJS.enc.Utf8);
+        const new_xpriv = CryptoJS.AES.encrypt(prev_xpriv_key, pinHash(strPin)).toString();
+        const prev_xpub = CryptoJS.AES.decrypt(is_btc[0].xpub, pinHash(strPrev));
+        const prev_xpub_key = prev_xpub.toString(CryptoJS.enc.Utf8);
+        const new_xpub = CryptoJS.AES.encrypt(prev_xpub_key, pinHash(strPin)).toString();
+        await walletModel.updateBTCKeys({wallet_id : wid, wif_key : new_wif, pub_key : new_xpub, priv_key : new_xpriv});
+      }
+      const is_xrp = await walletModel.getXRPWallet(wid);
+      if (is_xrp.length > 0){
+        const prev_pub = CryptoJS.AES.decrypt(is_xrp[0].pubKey, pinHash(strPrev));
+        const prev_pub_key = prev_pub.toString(CryptoJS.enc.Utf8);
+        const new_pub = CryptoJS.AES.encrypt(prev_pub_key, pinHash(strPin)).toString();
+        const prev_priv = CryptoJS.AES.decrypt(is_xrp[0].privKey, pinHash(strPrev));
+        const prev_priv_key = prev_priv.toString(CryptoJS.enc.Utf8);
+        const new_priv = CryptoJS.AES.encrypt(prev_priv_key, pinHash(strPin)).toString();
+        await walletModel.updateXRPKeys({wallet_id : wid, new_pub : new_pub, new_priv : new_priv});
       }
       await users.setUserPin({wallet_id : wid, pin : strNew});
       return res.json({pin : strNew , msg : 'pinUpdated'});
@@ -323,39 +356,32 @@ exports.login = async (req, res) => {
 
   exports.refreshToken = async(req, res) => {
     try {
-    const token = req.token;
-    const user = req.user;
-    const admin = req.admin;
-    const farmer = req.farmer;
-    const {pin, passphrase, auth} = req.body;
+    const token = req.header('x-auth-token');
+    const farmer_token = req.header('x-farmer-token');
+    const {wallet_id} = req.body;
     var timeNow = Math.floor(Date.now() / 1000);
     let updateToken;
-    if (!token && !pin && !passphrase && !auth) return res.status(403).json({ msg: 'Unauthorized request!' });
-    if (user && passphrase !== 'null'){
-      const curr_token = await users.getCurrentTokenUser({wallet_id : user.wallet_id, token : token});
+    if (!token && !farmer_token && !wallet_id) return res.status(403).json({ msg: 'Unauthorized request!' });
+    if (token && wallet_id){
+      const curr_token = await users.getCurrentTokenUser({wallet_id : wallet_id, token : token});
       if (!curr_token && !curr_token.length) return res.status(401).json({ msg: 'Unexisting user jwt db!' });
-      await this.authenticatePin(req, res);
-      const _wid = user.wallet_id;
       const expiry = curr_token[0].expiration;
       const wid = curr_token[0].wallet_id;
-      if (expiry > timeNow && wid == _wid){
+      if (expiry <= timeNow && wid == wallet_id) {
+        const user_token = await users.genToken(wallet_id);
+        await users.updateCurrentUserToken({token: token, new_token : user_token.token, expiration : user_token.expiration});
+        updateToken = await users.verifyToken(user_token.token);
+        return res.send(updateToken);
+       }
+      if (expiry > timeNow && wid == wallet_id){
           updateToken = await users.verifyToken(token);
-         return res.send(updateToken);
+          return res.send(updateToken);
       }
-     else if (expiry < timeNow && wid == _wid) {
-       const user_token = await users.genToken(user.wallet_id);
-       await users.updateCurrentUserToken({token: token, new_token : user_token.token, expiration : user_token.expiration});
-       updateToken = await users.verifyToken(user_token.token);
-       return res.send(updateToken);
-      }
-      else if (wid !== _wid) {
-        return res.status(403).json({ msg : 'invalid buyer token details' });
-      }
-      else {
-        return res.status(404).json({ msg : 'error refreshing buyer token' });
+     if (wid !== wallet_id) {
+        return res.status(403).json({ msg : 'invalid user token details' });
       }
     }
-    else if (admin && pin !== 'null' ){
+    /** else if (admin && pin !== 'null' ){
       const curr_token = await users.getCurrentTokenUser({wallet_id : admin.wallet_id, token : token});
       if (!curr_token && !curr_token.length) return res.status(401).json({ msg: 'Unexisting admin jwt db!' });
       await this.authenticatePinAdmin(req, res);
@@ -378,20 +404,21 @@ exports.login = async (req, res) => {
       else {
         return res.status(404).json({ msg : 'error refreshing token admin' });
       }
-    }
-    else if (farmer && auth){
-      const frm_token = await farmers.getJWTFarmerToken(auth);
+    } **/
+    else if (farmer_token && wallet_id){
+      const frm_token = await farmers.getJWTFarmerToken({token : farmer_token, wallet_id : wallet_id});
       if (!frm_token && !frm_token.length) return res.status(401).json({ msg: 'Unexisting farmer jwt db!' });
       const expiry = frm_token[0].expiry;
       const address = frm_token[0].address;
       const fid = frm_token[0].wallet_id;
-      const _fid = farmer.wallet_id;
-      const _address = farmer.address;
-      if (expiry > timeNow && fid == _fid && address == _address){ 
-        updateToken = await farmers.verifyToken(auth);
+      
+      //const _address = farmer.address;
+      if (expiry > timeNow && fid == wallet_id ){ 
+        updateToken = await farmers.verifyToken(farmer_token);
         return updateToken;
       }
-      else if (expiry < timeNow && fid == _fid && address == _address){
+      
+      if (expiry < timeNow && fid == wallet_id){
         let payload = {
           farmer : {
             wallet_id: fid,
@@ -404,11 +431,9 @@ exports.login = async (req, res) => {
         updateToken = await farmers.verifyToken(token.token);
         return res.send(updateToken);
       }
-      else if (fid !== _fid || address !== _address) {
+
+      if (fid !== wallet_id) {
         return res.status(403).json({ msg : 'invalid farmer token details' });
-      }
-      else {
-        return res.status(404).json({ msg : 'error refreshing farmer token' });
       }
     }
     else {

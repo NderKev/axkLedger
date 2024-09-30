@@ -1,10 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const { check } = require('express-validator');;
+const { check } = require('express-validator');
 const { validateAdmin, validateToken, validateFarmer } = require('../../middleware/auth');
 const adminController = require('../../controllers/admin');
 const {refreshToken} = require('../../controllers/auth');
 const farmerController = require('../../controllers/farmers');
+const transactions = require('../../controllers/transactions');
 
 
 router.get('/', validateToken, validateAdmin, adminController.getAdmin);
@@ -14,6 +15,7 @@ router.get('/permission', validateToken, validateAdmin, adminController.getUserP
 router.get('/permissions', validateToken, validateAdmin, adminController.getUserPermissions);
 router.get('/pin', validateToken, validateAdmin, adminController.getAdminPin);
 router.get('/roles', validateToken, validateAdmin, adminController.getUserRoles);
+router.get('/txs', validateToken, validateAdmin, transactions.getAllTransactions);
 
 
 router.post(
@@ -77,14 +79,12 @@ router.post(
   router.post(
     '/farmer/token',
     [
-      check('x-farmer-token', 'farmer token is required').isJWT().exists(),
-      check('wallet_id', 'farmer wallet id is required').isAlphanumeric().exists(),
+      check('x-auth-token', 'admin token is required').isJWT().exists(),
       check('address', 'farmer address id is required').isEthereumAddress().exists(),
     ],
     validateToken,
     validateAdmin,
-    validateFarmer,
-    farmerController.createFarmerToken,
+    farmerController.updateFarmerToken,
   );
 
   router.post(
@@ -113,10 +113,9 @@ router.post(
   router.post(
     '/refresh',
     [
-      check('pin', 'Pin is required').isNumeric().exists(),
+      check('x-auth-token', 'authetication token is required').isJWT().exists(),
+      check('wallet_id', 'Wallet ID is required').isAlphanumeric().not().isEmpty(),
     ],
-    validateToken,
-    validateAdmin,
     refreshToken,
   );
 

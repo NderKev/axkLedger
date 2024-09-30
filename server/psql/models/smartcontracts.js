@@ -79,7 +79,7 @@ exports.createConsignment = async (data) => {
     const query = db.write('axk_sc_product_own').insert({
       address: data.farmer,
       product_hash: data.consignment_hash,
-      tx_hash: data.tx_hash,
+      tx_hash: data.produce_hash,
       size : "consignment",
       type : "owner",
       created_at: createdAt,

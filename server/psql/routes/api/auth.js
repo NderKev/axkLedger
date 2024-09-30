@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { check } = require('express-validator');
-const {validateToken, validateFarmerExists} = require('../../middleware/auth');
+const {validateToken, validateFarmer} = require('../../middleware/auth');
 const {createFarmerKey} = require('../../controllers/farmers');
 const authController = require('../../controllers/auth');
 //const { createUserRole } = require('../../models/users');
@@ -21,11 +21,20 @@ router.post(
 router.post(
   '/pin',
   [
-    //check('pin', 'Please include a valid pin').isEmail(),
     check('pin', 'Pin is required').isNumeric().exists(),
   ],
   validateToken,
   authController.createUserPin,
+);
+
+router.put(
+  '/pin',
+  [
+    check('passphrase', 'Pin is required').isNumeric().exists(),
+    check('new_passphrase', 'Pin is required').isNumeric().exists(),
+  ],
+  validateToken,
+  authController.updateUserPin,
 );
 
 router.post(
@@ -34,17 +43,16 @@ router.post(
     //check('pin', 'Please include a valid pin').isEmail(),
     check('key', 'Key is required').isNumeric().exists(),
   ],
-  validateFarmerExists,
+  validateFarmer,
   createFarmerKey,
 );
 
 router.post(
   '/refresh',
   [
-    //check('pin', 'Please include a valid pin').isEmail(),
-    check('passphrase', 'Passphrase is required').isNumeric().exists(),
+    check('x-auth-token', 'authetication token is required').isJWT().exists(),
+    check('wallet_id', 'Wallet ID is required').isAlphanumeric().not().isEmpty(),
   ],
-  validateToken,
   authController.refreshToken,
 );
 
@@ -53,7 +61,7 @@ router.post(
   [
     check('wallet_id', 'Wallet ID is required').not().isEmpty(),
     check('role_id', 'Please include a valid role').isInt().not().isEmpty(),
-    check('user_role', 'User Role is required').not().isEmpty(),
+    check('user_role', 'User Role is required').isString().not().isEmpty(),
   ],
   validateToken,
   authController.updateUserPermission,

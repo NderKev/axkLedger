@@ -82,7 +82,8 @@ async function createHashFromInfo(address, s1, s2, s3) {
 async function registerConsignment(data) { 
     data.lot_number = generateLotNumber(8);
     data.creation_date = moment().format('YYYY/MM/DD');//moment().format('YYYY-MM-DD HH:mm:ss');
-    const uint_hash = await createHashFromInfo(data.farmer, data.lot_number, data.weight, data.creation_date);
+    const uint_hash = web3.utils.soliditySha3(data.farmer, web3.utils.fromAscii(data.lot_number), web3.utils.fromAscii(data.weight), web3.utils.fromAscii(data.creation_date));
+    //createHashFromInfo(data.farmer, data.lot_number, data.weight, data.creation_date);
     const tx = ProduceManagementContract.methods.registerConsignment(data.farmer, data.lot_number, data.weight, data.creation_date);
     const register_response = await sendTransaction(tx, fromAddress, privateKey);
     let dataReg = {
@@ -105,7 +106,7 @@ async function registerProduce(data) {
     //const lote_hash = web3.utils.soliditySha3(data.farmer, web3.utils.fromAscii(data.lot_number));
     //const creation_date_hash = web3.utils.soliditySha3(data.farmer, web3.utils.fromAscii(data.creation_date));
     //const produce_type_hash = web3.utils.soliditySha3(data.farmer, web3.utils.fromAscii(data.produce_type));
-    const produce_hash = await createHashFromInfo(data.farmer, data.lot_number, data.produce_type, data.creation_date);
+    const produce_hash = web3.utils.soliditySha3(data.farmer, web3.utils.fromAscii(data.lot_number), web3.utils.fromAscii(data.produce_type), web3.utils.fromAscii(data.creation_date)); //createHashFromInfo(data.farmer, data.lot_number, data.produce_type, data.creation_date);
     //data.uint_array = uint_array;
     for (let len = 0; len < data.consignments.length; len++){
         produce_part.push(data.consignments[len]); 

@@ -123,6 +123,13 @@ exports.getXRP = async (data) => {
     return query;
 };
 
+exports.getXRPWallet = async (wallet_id) => {
+  const query = db.read.select('*')
+    .from('axk_xrp')
+    .where('wallet_id', wallet_id);  
+    return query;
+};
+
 exports.checkXRP = async (data) => {
   const query = db.read.select('axk_xrp.address', 'axk_xrp.balance')
     .from('axk_xrp')
@@ -227,7 +234,7 @@ exports.createWif = async (data) => {
     return query;
   };
 
-  exports.updateWalletPassphrase = async (data) => {
+exports.updateWalletPassphrase = async (data) => {
     const query = db.write('axk_wallet')
       .where('wallet_id', data.wallet_id)
       .update({
@@ -238,6 +245,19 @@ exports.createWif = async (data) => {
     return query;
   };
 
+exports.updateWallet = async (data) => {
+    const query = db.write('axk_wallet')
+      .where('wallet_id', data.wallet_id)
+      .update({
+        mnemonic: data.key,
+        passphrase: data.passcode,
+        updated_at : moment().format('YYYY-MM-DD HH:mm:ss')
+      });
+    console.info("query -->", query.toQuery())
+    return query;
+  };
+
+
 exports.updateBTC = async (data) => {
     const query = db.write('axk_btc')
       .where('wallet_id', data.wallet_id)
@@ -245,6 +265,19 @@ exports.updateBTC = async (data) => {
         wif: data.wif,
         address: data.address,
         index: data.index,
+        updated_at : moment().format('YYYY-MM-DD HH:mm:ss')
+      });
+    console.info("query -->", query.toQuery())
+    return query;
+  };
+
+  exports.updateBTCKeys = async (data) => {
+    const query = db.write('axk_btc')
+      .where('wallet_id', data.wallet_id)
+      .update({
+        wif: data.wif_key,
+        xpub: data.pub_key,
+        xpriv: data.priv_key,
         updated_at : moment().format('YYYY-MM-DD HH:mm:ss')
       });
     console.info("query -->", query.toQuery())
@@ -285,6 +318,18 @@ exports.updateXRP = async (data) => {
         index: data.index,
         address: data.address,
         balance: data.balance,
+        updated_at : moment().format('YYYY-MM-DD HH:mm:ss')
+      });
+    console.info("query -->", query.toQuery())
+    return query;
+  };
+
+exports.updateXRPKeys = async (data) => {
+    const query = db.write('axk_xrp')
+      .where('wallet_id', data.wallet_id)
+      .update({
+        pubKey: data.new_pub,
+        privKey: data.new_priv,
         updated_at : moment().format('YYYY-MM-DD HH:mm:ss')
       });
     console.info("query -->", query.toQuery())

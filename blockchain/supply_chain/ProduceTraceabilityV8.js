@@ -80,8 +80,11 @@ async function addFarmProduce(data) {
     data.lot_number = ProduceManagement.generateLotNumber(8);//ProduceManagement.generateUniqueLotNumber(16);
     data.storage_date = moment().format('YYYY/MM/DD');//moment().format('YYYY-MM-DD HH:mm:ss');
     console.log(data);
+    
     //const prod_hash = ProduceManagement.createHashFromInfo(data.farmer, data.lot_number, data.weight, data.storage_date);
     const tx = ProduceTraceabilityV8Contract.methods.addFarmProduce(data.produce, data.lot_number, data.weight, data.quantity, data.storage_date, data.farmer, data.agents);
+    const produce_hash = web3.utils.soliditySha3(data.farmer, web3.utils.fromAscii(data.lot_number), web3.utils.fromAscii(data.produce), web3.utils.fromAscii(data.storage_date));
+    const consignment_hash = web3.utils.soliditySha3(data.farmer, web3.utils.fromAscii(data.lot_number), web3.utils.fromAscii(data.weight), web3.utils.fromAscii(data.storage_date));
     const add_response = await sendTransaction(tx, fromAddress, privateKey);
     let dataAdd = {
       txHash : add_response.transactionHash,
@@ -92,7 +95,9 @@ async function addFarmProduce(data) {
       quantity : data.quantity,
       storage_date : data.storage_date,
       farmer : data.farmer,
-      agents : data.agents
+      agents : data.agents,
+      produce_hash : produce_hash,
+      consignment_hash : consignment_hash
     };
     return dataAdd;
 }
@@ -122,7 +127,6 @@ async function sellFarmProduce(data) {
       txHash : sell_response.transactionHash,
       hash : data.hash,
       index : data.index,
-      //farmer : data.farmer,
       buyer : data.buyer,
       amount : data.amount,
       price : data.price,
@@ -204,7 +208,7 @@ async function currentproduct(data) {
 }
 // Function to get current produce data
 async function producedata(data) {
-    const dt = await ProduceTraceabilityV8Contract.methods.producedata(data.hash).productData(data.ndex).call();
+    const dt = await ProduceTraceabilityV8Contract.methods.producedata(data.hash).productData(data.index).call();
     return dt;
 }
 
