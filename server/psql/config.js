@@ -1,5 +1,5 @@
 const dotenv = require('dotenv');
-dotenv.config({ path: '../.env'});
+//dotenv.config({ path: '../../.env'});
 //dotenv.config({ path: './local.env'});
 //Load env vars if env is not production
 
