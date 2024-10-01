@@ -8,6 +8,7 @@ const userModel = require('../../server/psql/models/users');
 const { check, validationResult } = require('express-validator');
 const {validateToken} = require('../../server/psql/middleware/auth');
 const {authenticateUser} = require('../../server/psql/controllers/auth');
+require('dotenv').config({ path: '../../.env'});
 const router  = express.Router();
 const {successResponse, errorResponse} = require('./libs/response');
    const logStruct = (func, error) => {

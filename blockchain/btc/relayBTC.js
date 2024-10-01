@@ -3,7 +3,7 @@
    const bip32 = require('bip32')
    const bip39 = require('bip39')
    const axios = require('axios');
-   
+   require('dotenv').config({ path: '../../.env'});
    const moment = require('moment');
    const express = require('express');
    const autogenerate = require("./autogenerate");
@@ -20,7 +20,7 @@
    const { validateToken, validateAdmin } = require('../../server/psql/middleware/auth');
    const {authenticateUser, authenticateAdmin, authenticatePin, authenticatePinAdmin} = require('../../server/psql/controllers/auth');
    const walletModel = require('../../server/psql/models/wallet');
-   require('dotenv').config({ path: '../../.env'});
+   
    const logStruct = (func, error) => {
     return {'func': func, 'file': 'relayBTC', error}
   }
