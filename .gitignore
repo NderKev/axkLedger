@@ -175,3 +175,4 @@ nginx/
 server/psql/migrations/axk_send_btc.js
 server/psql/local.env
 blockchain/local.env
+*.env
