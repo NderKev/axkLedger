@@ -49,8 +49,8 @@ exports.createTransaction = async (req, res) => {
       if (req.body.wallet_id !== walletid) {
         return res.status(403).json({ msg : 'user wallet id mismatch' });
       }  
-      const response = await transactions.updateTransactionData(req.body);
-      return res.status(200).json(response);
+      await transactions.updateTransactionData(req.body);
+      return res.status(200).json({tx_hash : req.body.tx_hash , msg : ' transaction  updated'});
     } catch (error) {
       console.error('updateTransaction', error.message);
       return res.status(error.status).json(error.message);
@@ -77,8 +77,8 @@ exports.createTransaction = async (req, res) => {
       if (req.body.wallet_id !== walletid) {
         return res.status(403).json({ msg : 'user wallet id mismatch' });
       }  
-      const response = await transactions.updateTransactionHash(req.body);
-      return res.status(200).json(response);
+      await transactions.updateTransactionHash(req.body);
+      return res.status(200).json({tx_hash : req.body.tx_hash , msg : ' transaction  updated'});
     } catch (error) {
       console.error('updateTransactionHash', error.message);
       return res.status(error.status).json(error.message);
@@ -105,8 +105,8 @@ exports.createTransaction = async (req, res) => {
       if (req.body.wallet_id !== walletid) {
         return res.status(403).json({ msg : 'user wallet id mismatch' });
       }  
-      const response = await transactions.updateStatus(req.body);
-      return res.status(200).json(response);
+      await transactions.updateStatus(req.body);
+      return res.status(200).json({tx_hash : req.body.tx_hash , msg : ' transaction status updated'});
     } catch (error) {
       console.error('updateTransactionStatus', error.message);
       return res.status(error.status).json(error.message);

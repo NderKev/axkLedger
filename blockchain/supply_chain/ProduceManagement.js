@@ -12,6 +12,9 @@ require('dotenv').config({ path: '../../.env'});
 
 const {abi} = require("../abi/ProduceManagement.json");
 
+const smartcontracts = require('../../server/psql/models/smartcontracts');
+//const farmers = require('../../server/psql/models/farmers');
+
 const contractAddress = contracts.ProduceManagement;
 
 const ProduceManagementContract = new web3.eth.Contract(abi, contractAddress);
@@ -79,7 +82,12 @@ async function createHashFromInfo(address, s1, s2, s3) {
 }
 
 // Function to register a farmer produce consignment 
-async function registerConsignment(data) { 
+async function registerConsignment(data) {
+    /** let consignment = {}; 
+    const farmer = await farmers.checkFarmerExists(data.farmer);
+    consignment.wallet_id = farmer[0].wallet_id;
+    consignment.farmer = data.farmer;
+    consignment.owner = farmer[0].address; **/
     data.lot_number = generateLotNumber(8);
     data.creation_date = moment().format('YYYY/MM/DD');//moment().format('YYYY-MM-DD HH:mm:ss');
     const uint_hash = web3.utils.soliditySha3(data.farmer, web3.utils.fromAscii(data.lot_number), web3.utils.fromAscii(data.weight), web3.utils.fromAscii(data.creation_date));
@@ -99,7 +107,7 @@ async function registerConsignment(data) {
 
 // Function to register  farmer produce  
 async function registerProduce(data) { 
-    let produce_part = [];
+    let produce_part = [], length = 0;
     data.lot_number = generateLotNumber(10);
     data.creation_date = moment().format('YYYY/MM/DD');
     //const produce_name = web3.utils.soliditySha3(data.farmer, web3.utils.fromAscii(data.lot_number), web3.utils.fromAscii(data.produce_type), web3.utils.fromAscii(data.creation_date));
@@ -108,8 +116,18 @@ async function registerProduce(data) {
     //const produce_type_hash = web3.utils.soliditySha3(data.farmer, web3.utils.fromAscii(data.produce_type));
     const produce_hash = web3.utils.soliditySha3(data.farmer, web3.utils.fromAscii(data.lot_number), web3.utils.fromAscii(data.produce_type), web3.utils.fromAscii(data.creation_date)); //createHashFromInfo(data.farmer, data.lot_number, data.produce_type, data.creation_date);
     //data.uint_array = uint_array;
-    for (let len = 0; len < data.consignments.length; len++){
-        produce_part.push(data.consignments[len]); 
+    const db_cons = await smartcontracts.getFarmerConsignments(data.farmer);
+    if (db_cons.length > 0 && db_cons.length >= 5 ){
+       length = 5;
+    }
+    if (db_cons.length > 0 && db_cons.length < 5){
+        length = db_cons.length;
+    }
+   
+    for (let len = 0; len < length; len++){
+        //let p_hash = db_cons[len].p_hash;
+        produce_part.push(db_cons[len].p_hash);
+        await smartcontracts.updateConsignmentType(db_cons[len].p_hash);
     }
     
     data.uint_array = produce_part;

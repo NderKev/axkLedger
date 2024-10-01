@@ -82,10 +82,10 @@ const validateFarmer = (req, res, next) => {
   }
 };
 
-const validateFarmerExists = async(req, res, next) => {
-  const token = req.farmer.token; 
-  if (!token) return res.status(404).json({ msg: 'Unauthorized request!' });
-  const frm_token = await farmers.getJWTFarmerToken(token);
+/**  const validateFarmerExists = async(req, res, next) => {
+  const walletid = req.body.wallet_id; 
+  if (!walletid) return res.status(404).json({ msg: 'Unauthorized request!' });
+  const frm_token = await farmers.getFarmerToken(walletid);
   if (!frm_token && !frm_token.length) return res.status(403).json({ msg: 'Unexisting farmer jwt db!' });
   let data = req.body;
   let farmer;
@@ -123,7 +123,7 @@ const validateFarmerExists = async(req, res, next) => {
     res.status(500).json({ msg: err.message + ' : Internal auth error farmer' });
   }
 };
-/** const validateTokenMeta = (req, res, next) => {
+const validateTokenMeta = (req, res, next) => {
   const token = req.header('x-auth-token');
 
   if (!token) return res.status(401).json({ msg: 'Unauthorized request!' });
@@ -243,6 +243,5 @@ module.exports = {
   validateToken,
   validateAdmin,
   validateFarmer,
-  validateFarmerExists,
   validateBearerToken
 };

@@ -141,7 +141,7 @@ const send_ether_to_escrow = async(req, res) => {
       const toAddress = req.body.to || null;
       const validTo = isAddress(toAddress);
       let tx = { from: auth_data.evm.address , to: "0x0", value: ethAmount, gas: gasLimit, gasPrice: _gasprice, chainId: 11155111};
-      if (!toAddress || !validTo || toAddress === null){
+      if (!toAddress || !validTo || toAddress === null || toAddress == 'null' ){
         tx.to = process.env.ESCROW_ACCOUNT_ETH;
       }
       else {
@@ -401,5 +401,35 @@ router.post('/usdt/transfer', [
   return res.status(response.status).send(response)
 });
 
+
+const balanceUsdtToken = async(req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+  return res.status(400).json({ errors: errors.array() });
+  }
+  try{   
+     const web3 = new Web3.providers.HttpProvider(provider.provider);
+     const USDTContract = new web3.eth.Contract(usdtContractAbi, usdtContract);
+     const decimals = await USDTContract.methods.decimals().call;
+     const ten6 = Math.pow(10, -decimals);
+     const usdt_bal = await USDTContract.methods.balanceOf(data.from).call;
+     let bal_usdt = Number(usdt_bal.toString());
+     bal_usdt = bal_usdt * ten6;
+    return res.send({balance: bal_usdt}); //successResponse(200, bal_axk, 'balance'); 
+  } catch (error) {
+  console.error('error -> ', logStruct('balanceUsdtToken', error))
+  return res.send(error.status);
+}
+}
+
+router.get('/usdt', validateToken, [
+  check('address', 'User address is required').isEthereumAddress().not().isEmpty()
+], async(req, res, next) => {
+  console.log(req.body);
+  //const {to, amount} = req.body
+  const balance = await balanceUsdtToken(req, res);
+
+  return balance;
+});
 
 module.exports = router;

@@ -89,7 +89,7 @@ exports.generateUniqueId = function(length){
           pass: config.SMTP_PW, // generated ethereal password
         },
       });
-      const AUTH_URL = `localhost:8000/axkledger/v1/api/users/verify`;
+      const AUTH_URL = `localhost:8000/axkledger/v1/api/users/verify`;//http://102.133.149.187/backend/users/verify
       const link = `${AUTH_URL}/${token}`;
       console.log(link);
       // send mail with defined transport object
@@ -137,7 +137,7 @@ exports.generateUniqueId = function(length){
           pass: config.SMTP_PW, // generated ethereal password
         },
       });
-      const AUTH_URL = `localhost:8000/axkledger/v1/api/users/forgot_password`;//142.93.194.112/doeremi/v1/btc/usr
+      const AUTH_URL = `localhost:8000/axkledger/v1/api/users/forgot_password`;//http://102.133.149.187/backend/users/forgot_password
       const link = `${AUTH_URL}/${token.token}`;
       console.log(link);
       // send mail with defined transport object

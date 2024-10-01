@@ -160,7 +160,7 @@ const balanceLiskToken = async(req, res) => {
 }
 }
 
-router.post('/lisk', validateToken, [
+router.get('/lisk', validateToken, [
   check('address', 'User address is required').isEthereumAddress().not().isEmpty(),
   check('wallet_id', 'Wallet id is required').not().isEmpty()
 ], async(req, res, next) => {

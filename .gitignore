@@ -173,3 +173,5 @@ server/psql/migrations/axk_txs_eth.js
 *.zip
 nginx/
 server/psql/migrations/axk_send_btc.js
+server/psql/local.env
+blockchain/local.env

@@ -257,9 +257,18 @@ const logStruct = (func, error) => {
       return res.status(400).json({ errors: errors.array() });
       }
       try {
-        if (req.body.wallet_id !== req.user.wallet_id) {
+        const usr = req.user, adm = req.admin;
+        let walletid;
+        if (usr){
+            walletid = usr.wallet_id;
+        }
+        else {
+            walletid = adm.wallet_id
+        }
+        if (req.body.wallet_id !== walletid) {
           return res.status(403).json({ msg : 'user wallet id mismatch' });
         }
+
          const httpProvider = new Web3.providers.HttpProvider(provider.sepolia);
          const web3 = new Web3(httpProvider);
          const bal_eth = await web3.eth.getBalance(req.body.address);
@@ -295,7 +304,7 @@ const logStruct = (func, error) => {
      }
 
 
-     router.post('/get/balance', [
+     router.get('/balance', [
       check('wallet_id', 'Wallet id is required').isAlphanumeric().not().isEmpty(),
       check('address', 'Please include an address').isEthereumAddress().not().isEmpty(),
       check('x-auth-token', 'User token is required').isJWT().not().isEmpty()
@@ -306,7 +315,7 @@ const logStruct = (func, error) => {
       return res.status(respBal.status).send(respBal.data)
     });
 
-    router.get('/get/addr/balance', validateToken, [
+    router.get('/addr/balance', validateToken, [
       check('wallet_id', 'Wallet id is required').not().isEmpty(),
       check('address', 'Please include an address').not().isEmpty()
     ], async (req, res, next) => {
@@ -314,7 +323,7 @@ const logStruct = (func, error) => {
       return res.status(response.status).send(response)
     });
 
-
+  
 
 
     module.exports = router;

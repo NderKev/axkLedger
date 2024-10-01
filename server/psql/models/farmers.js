@@ -44,11 +44,7 @@ exports.getFarmerByWalletId = async (data) => {
     return query;
   };
   
-  exports.getAllFarmers = async () => {
-    const query = db.read.select('axk_sc_farmers.*')
-    .from('axk_sc_farmers')
-    return query;
-  };
+
 
   exports.createFarmer = async (data) => {
     const createdAt = moment().format('YYYY-MM-DD HH:mm:ss');

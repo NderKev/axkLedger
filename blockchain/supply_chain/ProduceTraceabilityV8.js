@@ -119,7 +119,7 @@ async function addProduct(data) {
 
 // Function to add  farmer produce  sale
 async function sellFarmProduce(data) { 
-    data.index = Math.floor(Math.random() * 9000000000) + 1000000000;
+    data.index = parseInt(ProduceManagement.generateLotNumber(10)); //Math.floor(Math.random() * 9000000000) + 1000000000;
     data.timestamp = moment().format('YYYY-MM-DD HH:mm:ss');
     const tx = ProduceTraceabilityV8Contract.methods.sellFarmProduce(data.hash, data.index, data.buyer, data.amount, data.price, data.timestamp);
     const sell_response = await sendTransaction(tx, fromAddress, privateKey);

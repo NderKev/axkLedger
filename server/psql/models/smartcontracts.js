@@ -1,3 +1,4 @@
+//const { consignments } = require('../../../blockchain/supply_chain/ProduceManagement');
 const db = require('../models/db');
 const moment = require('moment');
 
@@ -133,7 +134,8 @@ exports.createConsignment = async (data) => {
   exports.getFarmerConsignments = async (farmer) => {
     const query = db.read.select('axk_sc_consignments.*' )
       .from('axk_sc_consignments')
-      .where('farmer', farmer);   
+      .where('farmer', farmer)
+      .where('type', 'consignment');   
       return query;
   };
 
@@ -234,6 +236,16 @@ exports.createConsignment = async (data) => {
     return query;
   };
 
+  exports.updateConsignmentType = async (data) => {
+    const query = db.write('axk_sc_consignments')
+      .where('p_hash', data)
+      .update({
+        type : "owner",
+        updated_at : moment().format('YYYY-MM-DD HH:mm:ss')
+      });
+    console.info("query -->", query.toQuery())
+    return query;
+  };
   
 exports.updateSale = async (data) => {
     data.updated_at = moment().format('YYYY-MM-DD HH:mm:ss');
@@ -268,4 +280,5 @@ exports.updateSale = async (data) => {
     console.info("query -->", query.toQuery())
     return query;
   };
+
 

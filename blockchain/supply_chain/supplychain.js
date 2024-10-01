@@ -212,7 +212,7 @@ const registerProduce = async(req, res) => {
 
 router.post('/reg/product/v2',  [
   check('farmer', 'Please include farmer address').not().isEmpty(),
-  check('consignments', 'Please include produce consignments').isArray().not().isEmpty(),
+  //check('consignments', 'Please include produce consignments').isArray().not().isEmpty(),
   check('produce_type', 'Please include the produce type').not().isEmpty(),
   check('x-auth-token', 'Please include the authentication token').isJWT().not().isEmpty(),
   check('x-farmer-token', 'Please include the farmer token').isJWT().not().isEmpty(),
@@ -342,8 +342,9 @@ const sellFarmProduce = async(req, res) => {
       if (!buyerExists && !buyerExists.length) {
         return res.status(403).json({ msg : 'buyerNotExists'});
       } 
-      sale.buyer = req.body.buyer;
       const sell_pr = await ProduceTraceabilityV8.sellFarmProduce(req.body);
+      console.log(sell_pr);
+      sale.buyer = sell_pr.buyer;
       sale.tx_hash = sell_pr.txHash;
       sale.hash = sell_pr.hash;
       sale.timestamp = sell_pr.timestamp;

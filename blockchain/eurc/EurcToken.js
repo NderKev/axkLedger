@@ -1,4 +1,4 @@
-const walletModel = require('../../server/psql/models/wallet');
+//const walletModel = require('../../server/psql/models/wallet');
 const { check, validationResult } = require('express-validator');
 const {validateToken, validateAdmin} = require('../../server/psql/middleware/auth');
 const {authenticateUser, decryptPrivKey, authenticatePin} = require('../../server/psql/controllers/auth');
@@ -37,7 +37,7 @@ const balanceEurcToken = async(req, res) => {
   }
   }
 
-  router.post('/balance', validateToken,  [
+  router.get('/balance', validateToken,  [
     check('wallet_id', 'Please include the wallet id').isAlphanumeric().not().isEmpty(),
     check('address', 'User address is required').isEthereumAddress().not().isEmpty()
   ], async(req, res, next) => {
