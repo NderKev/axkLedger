@@ -1,11 +1,11 @@
 'use strict';
 
-require('dotenv').config({ path: '../.env'});
+const config = require('../server/psql/config');
 
 //dotenv.config();
 
 const http = require('http');
-const port = process.env.SRV_PORT || '4055';
+const port = config.B_PORT || '4055';
 
 const app = require('./app');
 

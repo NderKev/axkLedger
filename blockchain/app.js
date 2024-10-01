@@ -2,12 +2,13 @@ const express = require('express');
 const cors = require('cors');
 
 
-require('dotenv').config({ path: '../.env'});
+const config = require('../server/psql/config');
+//dotenv.config({ path: './local.env'});
 
 
 
 
-const DEBUG = process.env.DEBUG || false;
+const DEBUG = config.DEBUG || false;
 if(!DEBUG){
   console.info = () => {}
 }
