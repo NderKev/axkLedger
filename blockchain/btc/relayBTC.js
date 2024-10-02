@@ -3,12 +3,12 @@
    const bip32 = require('bip32')
    const bip39 = require('bip39')
    const axios = require('axios');
-   require('dotenv').config({ path: '../../.env'});
    const moment = require('moment');
    const express = require('express');
    const autogenerate = require("./autogenerate");
-   const cmp_token = process.env.COIN_MARKET_CAP;
-   const mainnet = process.env.MAINNET_URL;
+   const config = require('../config');
+   const cmp_token = config.COIN_MARKET_CAP;
+   const mainnet = config.MAINNET_URL;
    const router  = express.Router();
    const {successResponse, errorResponse} = require('./lib/response');
    const CryptoJS = require("crypto-js");
@@ -20,21 +20,21 @@
    const { validateToken, validateAdmin } = require('../../server/psql/middleware/auth');
    const {authenticateUser, authenticateAdmin, authenticatePin, authenticatePinAdmin} = require('../../server/psql/controllers/auth');
    const walletModel = require('../../server/psql/models/wallet');
-   
+  
    const logStruct = (func, error) => {
     return {'func': func, 'file': 'relayBTC', error}
   }
   
    
-   let test_api = process.env.TESTNET_API;
-   let test_tx = process.env.TESTNET_TX;
-   let main_tx = process.env.MAINNET_TX;
-  // let token = process.env.TOKEN;
-   let decode = process.env.TESTNET_DECODE;
-   let push = process.env.TESTNET_PUSH;
-   let decodemain = process.env.MAINNET_DECODE;
-   let pushmain = process.env.MAINNET_PUSH;
-   let token = process.env.BLOCKCIPHER_TOKEN;
+   let test_api = config.TESTNET_API;
+   let test_tx = config.TESTNET_TX;
+   let main_tx = config.MAINNET_TX;
+  // let token = config.TOKEN;
+   let decode = config.TESTNET_DECODE;
+   let push = config.TESTNET_PUSH;
+   let decodemain = config.MAINNET_DECODE;
+   let pushmain = config.MAINNET_PUSH;
+   let token = config.BLOCKCIPHER_TOKEN;
    
 
    
@@ -343,15 +343,13 @@
         else {
           walletid = adm.wallet_id
         }
-        if (req.body.wallet_id !== walletid) {
-          return res.status(403).json({ msg : 'user wallet id mismatch' });
-        }
+        
        //sendFrom, keystr, sendTo, amount,  indexer, keyP, passphrase
        const TESTNET = bitcoin.networks.testnet;
        //const saltRounds = 10;
        const psbt = new bitcoin.Psbt({network : TESTNET});
        let auth_btc = {}, pin_set = true;
-       const check_pin = await userModel.fetchUserPin(req.body.wallet_id);
+       const check_pin = await userModel.fetchUserPin(walletid);
        const auth = check_pin[0].pin;
         if (typeof auth === 'undefined' || auth === null || auth == 'null'){
           pin_set = false;
@@ -448,7 +446,7 @@
         //const respPush = await pushRawTransaction(rawTx, token);
         //console.log(respPush.data);
         let txObj = {}, sentObj = {};
-        sentObj.wallet_id = req.body.wallet_id;
+        sentObj.wallet_id = walletid;
         sentObj.from = auth_btc.btc.address;
         sentObj.amount = req.body.amount;
         sentObj.to = req.body.to;
@@ -457,7 +455,7 @@
         sentObj.address = destination.address;
         sentObj.rawTx = rawTx;
         sentObj.txHash = tx_hash;
-        txObj.wallet_id = req.body.wallet_id;
+        txObj.wallet_id = walletid;
         txObj.address = auth_btc.btc.address;
         txObj.tx_hash = tx_hash;
         txObj.mode = 'btc';
@@ -808,14 +806,12 @@ const psbtTransactionBuildMain = async(sendFrom, keystore, key, sendTo, amount, 
     else{
       _wallet_id = admn.wallet_id;
     }
-    if (req.body.wallet_id !== _wallet_id) {
-      return res.status(403).json({ msg : 'user wallet id mismatch' });
-    }
-     const response = await getTransactions(req.body.address, token);
+     const userAddress = await walletModel.checkBTC(_wallet_id);
+     const response = await getTransactions(userAddress[0].address, token);
      let bal = {};
-     bal.wallet_id = req.body.wallet_id;
+     bal.wallet_id = _wallet_id;
      bal.crypto = "btc";
-     bal.address = req.body.address;
+     bal.address = userAddress[0].address;
      let unconfirmed = response.data.unconfirmed_balance;
      if (unconfirmed && unconfirmed > 0 ){
       let uncf = (unconfirmed/100000000);
@@ -853,13 +849,15 @@ const psbtTransactionBuildMain = async(sendFrom, keystore, key, sendTo, amount, 
 
 
   
- router.post('/test/balance', validateToken, [
-  check('wallet_id', 'Wallet id is required').not().isEmpty(),
-  check('address', 'Please include an address').not().isEmpty()
-], async(req, res, next) => {
+ router.get('/test/balance', validateToken, async(req, res, next) => {
      const respBal = await calculatePrices(req, res);
      return res.status(respBal.status).send(respBal.data)
- })
+ });
+
+ router.get('/admin/balance', validateAdmin, async(req, res, next) => {
+     const respBal = await calculatePrices(req, res);
+     return res.status(respBal.status).send(respBal.data)
+ });
 
  router.post('/main/balance', validateToken, async(req, res, next) => {
    
@@ -882,12 +880,10 @@ const psbtTransactionBuildMain = async(sendFrom, keystore, key, sendTo, amount, 
  });
  
  router.post('/test/sendBTC/cr', validateToken, [
-  check('wallet_id', 'Wallet id is required').not().isEmpty(),
   check('amount', 'Please include a amount').isInt().not().isEmpty(),
-  //check('username', 'Please include a username').not().isEmpty(),
   check('passphrase', 'Please include a passphrase').isNumeric().not().isEmpty(),
 ], async(req, res, next) => {
-  req.body.to = process.env.ESCROW_ACCOUNT_BTC;//"mnxW3nw6AVfAXE55vsoMkyGEGmB9KnWm4N";
+  req.body.to = config.ESCROW_BTC;//"mnxW3nw6AVfAXE55vsoMkyGEGmB9KnWm4N";
   //req.body.passphrase = req.body.pin;
   const response = await psbtTransactionBuilderCr(req, res);
   
@@ -895,7 +891,6 @@ const psbtTransactionBuildMain = async(sendFrom, keystore, key, sendTo, amount, 
  });
 
  router.post('/test/sendBTC/addr', validateToken, [
-  check('wallet_id', 'Wallet id is required').not().isEmpty(),
   check('amount', 'Please include a amount').isInt().not().isEmpty(),
   check('passphrase', 'Please include a passphrase').isNumeric().not().isEmpty(),
   check('to', 'Please include a destination address').isBtcAddress().not().isEmpty(),
@@ -905,8 +900,7 @@ const psbtTransactionBuildMain = async(sendFrom, keystore, key, sendTo, amount, 
   return res.status(response.status).send(response.data)
  });
 
- router.post('/test/sendBTC/adm', validateToken, validateAdmin, [
-  check('wallet_id', 'Wallet id is required').not().isEmpty(),
+ router.post('/test/sendBTC/admin', validateAdmin, [
   check('amount', 'Please include a amount').isInt().not().isEmpty(),
   check('pin', 'Please include a pin').isNumeric().not().isEmpty(),
   check('to', 'Please include a destination address').isBtcAddress().not().isEmpty(),
@@ -949,6 +943,20 @@ const psbtTransactionBuildMain = async(sendFrom, keystore, key, sendTo, amount, 
   return res.status(response.status).send(response.data);
 });
 
+router.post('/test/decode/admin', validateAdmin, async(req, res, next) => {
+  let walletid = await walletModel.fetchSentPending({wallet_id : req.admin.wallet_id, rawTx : req.body.tx});
+  if (!walletid && !walletid.length) {
+    return res.status(403).json({ msg : 'transcationNotExists' });
+  }
+  if (walletid[0].wallet_id !== req.admin.wallet_id) {
+    return res.status(403).json({ msg : 'user wallet id mismatch' });
+  }
+  const tx = JSON.stringify(req.body);
+  const response = await decodeRawTransaction(tx, token);
+  await walletModel.updateBtcSent({wallet_id : req.admin.wallet_id, rawTx : req.body.tx, status : "decoded"});
+  return res.status(response.status).send(response.data);
+});
+
 router.post('/main/decode', validateToken, async(req, res, next) => {
   const tx = JSON.stringify(req.body);
   const response = await decodeRawTransactionMain(tx, token);
@@ -985,7 +993,28 @@ router.post('/test/push/cr', validateToken, async(req, res, next) => {
   return res.status(response.status).send(response.data)
 });
 
-
+router.post('/test/push/admin', validateAdmin, async(req, res, next) => {
+  let walletid = await walletModel.fetchSentDecoded({wallet_id : req.admin.wallet_id, rawTx : req.body.tx});
+  if (!walletid && !walletid.length) {
+    return res.status(403).json({ msg : 'transcationNotExists' });
+  }
+  if (walletid[0].wallet_id !== req.admin.wallet_id) {
+    return res.status(403).json({ msg : 'user wallet id mismatch' });
+  }
+  const tx = JSON.stringify(req.body);
+  const response = await pushRawTransactionCr(tx, token);
+  await walletModel.updateBtcSent({wallet_id : req.admin.wallet_id, rawTx : req.body.tx, status : "pushed"});
+  let sent_wif = await walletModel.fetchSentBtc({wallet_id : req.admin.wallet_id, rawTx : req.body.tx});
+  let rec_wif = {
+    wallet_id : req.admin.wallet_id,
+    address : sent_wif[0].address,
+    wif : sent_wif[0].wif,
+    index : sent_wif[0].index
+  }
+  await walletModel.createWif(rec_wif);
+  await walletModel.updateBTC(rec_wif);
+  return res.status(response.status).send(response.data)
+});
 
 router.post('/main/pushBTC', validateToken, async(req, res, next) => {
   const tx = JSON.stringify(req.body);

@@ -17,7 +17,6 @@ const path = require('path');
       res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
       next();
   });
-  /* Cookie Parser */
   app.use(cookieParser());
   app.use(logger)
 

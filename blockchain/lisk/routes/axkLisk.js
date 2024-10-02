@@ -5,16 +5,16 @@ const pinHash = require('sha256');
 const { hdkey, Wallet } = require('@ethereumjs/wallet');
 const router  = express.Router();
 const axkToken = require('../scripts/AXKToken');
-require('dotenv').config();
 const {successResponse, errorResponse} = require('../../eth/libs/response');
-const privateKey = process.env.LISK_PRIV_KEY;
-const fromAddress = process.env.ESCROW_ACCOUNT_ETH;
+const config = require('../../config');
+const privateKey = config.LISK_PRIV_KEY;
+const fromAddress = config.ESCROW_ETH;
 const walletModel = require('../../../server/psql/models/wallet');
 const transactionModel = require('../../../server/psql/models/transactions');
 const {authenticateUser, decryptPrivKey} = require('../../../server/psql/controllers/auth');
 const { check, validationResult } = require('express-validator');
 const {validateToken, validateAdmin} = require('../../../server/psql/middleware/auth');
-require('dotenv').config({ path: '../../../.env'});
+
 
 const logStruct = (func, error) => {
     return {'func': func, 'file': 'axkLisk', error}
@@ -160,10 +160,9 @@ const balanceLiskToken = async(req, res) => {
 }
 }
 
-router.get('/lisk', validateToken, [
-  check('address', 'User address is required').isEthereumAddress().not().isEmpty(),
-  check('wallet_id', 'Wallet id is required').not().isEmpty()
-], async(req, res, next) => {
+router.get('/lisk', [
+  check('x-auth-token', 'User token is required').isJWT().not().isEmpty()
+], validateToken, async(req, res, next) => {
   console.log(req.body);
   //const {to, amount} = req.body
   const balance = await balanceLiskToken(req, res);
@@ -184,7 +183,7 @@ const escrowLiskToken = async(req, res) => {
       const toAddress = req.body.to || null;
       const validTo = isAddress(toAddress);
       if (!toAddress || !validTo || toAddress === null){
-        reqData.to = process.env.ESCROW_ACCOUNT_ETH;
+        reqData.to = config.ESCROW_ETH;
       }
       else {
         reqData.to = toAddress;
@@ -213,7 +212,6 @@ const escrowLiskToken = async(req, res) => {
 }
 
 router.post('/escrow', validateToken, [
-  check('wallet_id', 'Wallet id is required').not().isEmpty(),
   check('passphrase', 'Please include the pasphrase').isNumeric().not().isEmpty(),
   check('amount', 'Amount is required').isNumeric().not().isEmpty()
 ], async(req, res, next) => {
@@ -225,7 +223,6 @@ router.post('/escrow', validateToken, [
 });
 
 router.post('/send', validateToken, [
-  check('wallet_id', 'Wallet id is required').not().isEmpty(),
   check('passphrase', 'Please include the pasphrase').isNumeric().not().isEmpty(),
   check('amount', 'Amount is required').isNumeric().not().isEmpty(),
   check('to', 'Please include a destination address').isEthereumAddress().not().isEmpty(),

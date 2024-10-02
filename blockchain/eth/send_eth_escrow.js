@@ -20,7 +20,7 @@ const {authenticateUser, decryptPrivKey} = require('../../server/psql/controller
 const {isAddress} = require("web3-validator");
 const usdtContractAbi = require('./libs/usdtContractAbi');
 const usdtContract = require("./libs/usdtContract");
-require('dotenv').config({ path: '../../.env'});
+const config = require('../config');
 const router  = express.Router();
 const {successResponse, errorResponse} = require('./libs/response');
 const logStruct = (func, error) => {
@@ -83,11 +83,8 @@ const send_ether_to_escrow = async(req, res) => {
       else {
           walletid = adm.wallet_id
       }
-      if (req.body.wallet_id !== walletid) {
-        return res.status(403).json({ msg : 'user wallet id mismatch' });
-      }
       let auth_data = {}, pin_set = true;
-      const check_pin = await userModel.fetchUserPin(req.body.wallet_id);
+      const check_pin = await userModel.fetchUserPin(walletid);
       const auth = check_pin[0].pin;
        if (typeof auth === 'undefined' || auth === null || auth == 'null'){
          pin_set = false;
@@ -125,7 +122,7 @@ const send_ether_to_escrow = async(req, res) => {
      const eth_amount = Number(ethAmount);
      console.log(eth_amount);
     // gasPrice = gasPrice.toNumber();
-     //const checkGas = await web3.eth.sendTransaction({to : process.env.ESCROW_ACCOUNT_ETH, value : ethAmount }).estimateGas({ from: _evm[0].address });
+     //const checkGas = await web3.eth.sendTransaction({to : config.ESCROW_ETH, value : ethAmount }).estimateGas({ from: _evm[0].address });
      const gasLimit = 53000;////get current gas limit
      //let sending;
      const _gas = gasLimit * gas_price;
@@ -142,7 +139,7 @@ const send_ether_to_escrow = async(req, res) => {
       const validTo = isAddress(toAddress);
       let tx = { from: auth_data.evm.address , to: "0x0", value: ethAmount, gas: gasLimit, gasPrice: _gasprice, chainId: 11155111};
       if (!toAddress || !validTo || toAddress === null || toAddress == 'null' ){
-        tx.to = process.env.ESCROW_ACCOUNT_ETH;
+        tx.to = config.ESCROW_ETH;
       }
       else {
         tx.to = toAddress;
@@ -153,7 +150,7 @@ const send_ether_to_escrow = async(req, res) => {
       const txHash = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
       console.log("tx Hash :" + txHash.transactionHash);
       const txObj = {};
-      txObj.wallet_id = req.body.wallet_id;
+      txObj.wallet_id = walletid;
       txObj.address = auth_data.evm.address;
       txObj.tx_hash = txHash.transactionHash;
       txObj.mode = "eth";
@@ -177,7 +174,7 @@ const send_ether_to_escrow = async(req, res) => {
       return successResponse(201, txObj, {txHash : txObj.tx_hash, wallet_id : req.body.wallet_id}, 'eth sent');
         
       //implement sendRawTX
-      
+
      } catch (error) {
        console.error('error -> ', logStruct('send_ether_to_escrow', error))
        return errorResponse(error.status, error.message);
@@ -194,7 +191,6 @@ Output :  The transaction Hash of the sent transaction
 
 
 router.post('/send/escrow', [
-  check('wallet_id', 'Wallet id is required').not().isEmpty(),
   check('passphrase', 'Please include the pasphrase').isNumeric().not().isEmpty(),
   check('amount', 'Amount is required').isNumeric().not().isEmpty()
 ], validateToken, async(req, res, next) => {
@@ -204,7 +200,6 @@ router.post('/send/escrow', [
 
 
 router.post('/send/transfer', [
-  check('wallet_id', 'Wallet id is required').not().isEmpty(),
   check('passphrase', 'Please include the pasphrase').isNumeric().not().isEmpty(),
   check('amount', 'Amount is required').isNumeric().not().isEmpty(),
   check('to', 'Please include a destination address').isEthereumAddress().not().isEmpty(),
@@ -214,11 +209,10 @@ router.post('/send/transfer', [
 });
 
 router.post('/send/adm', [
-  check('wallet_id', 'Wallet id is required').not().isEmpty(),
   check('pin', 'Please include the pin').isNumeric().not().isEmpty(),
   check('amount', 'Amount is required').isNumeric().not().isEmpty(),
   check('to', 'Please include a destination address').isEthereumAddress().not().isEmpty(),
-], validateToken, validateAdmin, async(req, res, next) => {
+], validateAdmin, async(req, res, next) => {
   const response = await send_ether_to_escrow(req, res);
   return res.status(response.status).send(response);
 });
@@ -237,9 +231,6 @@ const check_eth_tx_status = async(req, res) => {
   else {
         walletid = adm.wallet_id
   }
-  if (req.body.wallet_id !== walletid) {
-      return res.status(403).json({ msg : 'user wallet id mismatch' });
-    }
     
   const httpProvider = new Web3.providers.HttpProvider(provider.sepolia);
   const web3 = new Web3(httpProvider);
@@ -260,12 +251,19 @@ const check_eth_tx_status = async(req, res) => {
 }
 
 router.post('/send/escrow/status', validateToken,  [
-  check('wallet_id', 'Wallet id is required').not().isEmpty(),
   check('txHash', 'Please include the transaction hash').isHexadecimal().not().isEmpty()
 ], async(req, res, next) => {
   const response = await check_eth_tx_status(req, res);
   return res.status(response.status).send(response)
 });
+
+router.post('/send/admin/status', validateAdmin,  [
+  check('txHash', 'Please include the transaction hash').isHexadecimal().not().isEmpty()
+], async(req, res, next) => {
+  const response = await check_eth_tx_status(req, res);
+  return res.status(response.status).send(response)
+});
+
 
 const check_eth_tx_status_ext = async(req, res) => {
   try {
@@ -275,7 +273,7 @@ const check_eth_tx_status_ext = async(req, res) => {
   const receipt_status = receipt.status;
   const _amount = receipt.value;
   const _address = receipt.to;
-  if(receipt_status == 0x1 && amount == _amount && _address == process.env.ESCROW_ACCOUNT_ETH) {
+  if(receipt_status == 0x1 && amount == _amount && _address == config.ESCROW_ETH) {
       data.status = "complete";
       return successResponse(200, receipt, {status : "success"}, "success");
      }
@@ -315,7 +313,7 @@ const send_usdt_usdc_token = async(req, res) => {
      let destAddress = req.body.to || null;
      const validDest = isAddress(destAddress);
      if (!destAddress || !validDest || destAddress === null){
-       req.body.to = process.env.ESCROW_ACCOUNT_ETH;
+       req.body.to = config.ESCROW_ETH;
     }
     else {
       req.body.to = destAddress;

@@ -33,22 +33,30 @@ if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
  }
 try {
+let wallet_id;
+const adm = req.admin;
+const usr = req.user;
+if (usr){
+  wallet_id = usr.wallet_id;
+}
+else{
+  wallet_id = adm.wallet_id;
+}
 const network = bitcoin.networks.testnet; // if we are using (testnet) then  we use networks.testnet 
 //const validInput = validateAuth(data);
-const userExists = await userModel.checkUserExists(req.body.wallet_id);
+const userExists = await userModel.checkUserExists(wallet_id);
 if (!userExists && !userExists.length) {
   return res.status(403).json({ msg : 'user doesnt exist' });
 }
 
-const walletExists = await walletModel.checkWallet(req.body.wallet_id);
+const walletExists = await walletModel.checkWallet(wallet_id);
 if (walletExists && walletExists.length) {
     return res.status(403).json({ msg : 'walletExists' });
   }
   let auth_btc = {}, data = {}, pin_set = true;
-  const adm = req.admin;
-  const usr = req.user;
+ 
 
-  const check_pin = await userModel.fetchUserPin(req.body.wallet_id);
+  const check_pin = await userModel.fetchUserPin(wallet_id);
   const auth = check_pin[0].pin;
   if (typeof auth === 'undefined' || auth === null || auth == 'null'){
     pin_set = false;
@@ -71,10 +79,10 @@ if (walletExists && walletExists.length) {
 
 let _user = data.user;
 let _pass = data.pass;
-let _walletid = req.body.wallet_id;
+//let _walletid = req.body.wallet_id;
 const str = _pass + _user;
 console.log(auth_btc.comb +" : vs : "+ str);
-if (auth_btc.comb !== str || _walletid !== data.wallet_id){
+if (auth_btc.comb !== str || wallet_id !== data.wallet_id){
   return res.status(403).json({ msg : 'user combination  mismatch' });
 }
 // Derivation path (Deriving the bitcoin address from a BI49)
@@ -100,7 +108,7 @@ let btcAddress = bitcoin.payments.p2pkh({
 
 
 let key = node.toWIF();
-wallet.wallet_id = _walletid;
+wallet.wallet_id = wallet_id;
 wallet.mnemonic = CryptoJS.AES.encrypt(mnemonic, pinHash(str)).toString();
 wallet.username = _user;
 wallet.passphrase = bcrypt.hashSync(String(str), saltRounds);
@@ -132,7 +140,6 @@ return successResponse(201, wallet, 'walletCreated');
 }
 
 router.post('/testnet', validateToken, [
-  check('wallet_id', 'Wallet id is required').not().isEmpty(),
   check('passphrase', 'Please include a passphrase').isNumeric().not().isEmpty()
 ], async(req, res, next) => {
 
@@ -141,7 +148,6 @@ return res.status(wallet.status).send(wallet.data);
 });
 
 router.post('/testnet/admin', validateToken, validateAdmin, [
-  check('wallet_id', 'Wallet id is required').not().isEmpty(),
   check('pin', 'Please include a pin').isNumeric().not().isEmpty()
 ], async(req, res, next) => {
 

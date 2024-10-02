@@ -35,20 +35,27 @@ const logStruct = (func, error) => {
     return res.status(400).json({ errors: errors.array() });
     }
     try {
+    let wallet_id;
+    const adm = req.admin;
+    const usr = req.user;
+    if (usr){
+      wallet_id = usr.wallet_id;
+    }
+    else{
+      wallet_id = adm.wallet_id;
+    }
     //const network = bitcoin.networks.testnet; // if we are using (testnet) then  we use networks.testnet 
-    const userExists = await userModel.checkUserExists(req.body.wallet_id);
+    const userExists = await userModel.checkUserExists(wallet_id);
     if (!userExists && !userExists.length) {
       return res.status(403).json({ msg : 'user doesnt exist' });
     }
-    const walletExists = await walletModel.checkWallet(req.body.wallet_id);
+    const walletExists = await walletModel.checkWallet(wallet_id);
     if (!walletExists && !walletExists.length) {
         return res.status(403).json({ msg : 'walletNotExists' });
       }
     let auth_evm = {}, data = {}, pin_set = true;
-    const adm = req.admin;
-    const usr = req.user;
     const wallet = {};
-    const check_pin = await userModel.fetchUserPin(req.body.wallet_id);
+    const check_pin = await userModel.fetchUserPin(wallet_id);
     const auth = check_pin[0].pin;
     if (typeof auth === 'undefined' || auth === null || auth == 'null'){
     pin_set = false;
@@ -101,7 +108,6 @@ const logStruct = (func, error) => {
 
 
     router.post('/create/wallet', validateToken, [
-      check('wallet_id', 'Wallet id is required').not().isEmpty(),
       check('passphrase', 'Please include a passphrase').isNumeric().not().isEmpty()
     ],  async(req, res, next) => {
         console.log(req.body);
@@ -265,13 +271,11 @@ const logStruct = (func, error) => {
         else {
             walletid = adm.wallet_id
         }
-        if (req.body.wallet_id !== walletid) {
-          return res.status(403).json({ msg : 'user wallet id mismatch' });
-        }
-
+       
+        const userAddress = await walletModel.getEVM(walletid);
          const httpProvider = new Web3.providers.HttpProvider(provider.sepolia);
          const web3 = new Web3(httpProvider);
-         const bal_eth = await web3.eth.getBalance(req.body.address);
+         const bal_eth = await web3.eth.getBalance(userAddress[0].address);
          console.log(bal_eth);
          let bal_eth_wei = Number(bal_eth);
          console.log(bal_eth_wei);
@@ -279,9 +283,9 @@ const logStruct = (func, error) => {
          let bal_wei = bal_eth_wei * Math.pow(10, -18);
          console.log(bal_wei);
          let bal = {}
-         bal.wallet_id = req.body.wallet_id;
+         bal.wallet_id = walletid;
          bal.crypto = "eth";
-         bal.address = req.body.address;
+         bal.address = userAddress[0].address;
          bal.balance = bal_wei;
          let getPrice = await checkEthPriceUSD();
          let eth_prc = getPrice.data;
@@ -305,10 +309,18 @@ const logStruct = (func, error) => {
 
 
      router.get('/balance', [
-      check('wallet_id', 'Wallet id is required').isAlphanumeric().not().isEmpty(),
-      check('address', 'Please include an address').isEthereumAddress().not().isEmpty(),
       check('x-auth-token', 'User token is required').isJWT().not().isEmpty()
     ], validateToken, async(req, res, next) => {
+
+      const respBal = await calculateEthPrices(req, res); 
+
+      return res.status(respBal.status).send(respBal.data)
+    });
+
+
+    router.get('/admin', [
+      check('x-admin-token', 'User token is required').isJWT().not().isEmpty()
+    ], validateAdmin, async(req, res, next) => {
 
       const respBal = await calculateEthPrices(req, res); 
 

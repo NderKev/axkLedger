@@ -2,8 +2,8 @@ const express = require('express');
 const cors = require('cors');
 
 
-const config = require('../server/psql/config');
-//dotenv.config({ path: './local.env'});
+const config = require('./config');
+
 
 
 

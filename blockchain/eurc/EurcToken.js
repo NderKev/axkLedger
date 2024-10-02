@@ -9,7 +9,7 @@ const provider = require('../eth/libs/provider');
 const httpProvider = new Web3.providers.HttpProvider(provider.sepolia);
 const web3 = new Web3(httpProvider);
 const EurcContract = new web3.eth.Contract(EurcToken, contracts.EurcToken);
-//const EurcSmartContract = 
+const walletModel = require('../../server/psql/models/wallet');
 const router  = express.Router();
 
 const balanceEurcToken = async(req, res) => {
@@ -17,8 +17,18 @@ const balanceEurcToken = async(req, res) => {
     if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
     }
-    try{  
-      const bal_eurc = await EurcContract.methods.balanceOf(req.body.address).call();
+    try{ 
+      const usr = req.user, adm = req.admin;
+        let walletid;
+        if (usr){
+            walletid = usr.wallet_id;
+        }
+        else {
+            walletid = adm.wallet_id
+        }
+       
+      const userAddress = await walletModel.getEVM(walletid); 
+      const bal_eurc = await EurcContract.methods.balanceOf(userAddress[0].address).call();
       console.log( "balance: " + bal_eurc);
       //bal_eth 
       const bal_eurc_wei = Number(bal_eurc.toString());
@@ -27,7 +37,7 @@ const balanceEurcToken = async(req, res) => {
       console.log(eurc_wei); 
       //const bal_axk = await axkToken.balanceOf(req.body.address);
       const balance = {
-         wallet_id : req.user.wallet_id,
+         wallet_id : walletid,
          balance : eurc_wei
       }
       return res.send({balance: balance}); //successResponse(200, bal_axk, 'balance'); 
@@ -37,14 +47,19 @@ const balanceEurcToken = async(req, res) => {
   }
   }
 
-  router.get('/balance', validateToken,  [
-    check('wallet_id', 'Please include the wallet id').isAlphanumeric().not().isEmpty(),
-    check('address', 'User address is required').isEthereumAddress().not().isEmpty()
-  ], async(req, res, next) => {
+  router.get('/balance',  [
+    check('x-auth-token', 'User token is required').isJWT().not().isEmpty()
+  ], validateToken, async(req, res, next) => {
     const balance = await balanceEurcToken(req, res);
     return balance;
 });
 
+router.get('/admin', [
+  check('x-admin-token', 'User token is required').isJWT().not().isEmpty()
+], validateAdmin, async(req, res, next) => {
+  const balance = await balanceEurcToken(req, res);
+  return balance;
+});
 
 
 

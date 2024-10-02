@@ -8,7 +8,7 @@ const userModel = require('../../server/psql/models/users');
 const { check, validationResult } = require('express-validator');
 const {validateToken} = require('../../server/psql/middleware/auth');
 const {authenticateUser} = require('../../server/psql/controllers/auth');
-require('dotenv').config({ path: '../../.env'});
+const config = require('../config');
 const router  = express.Router();
 const {successResponse, errorResponse} = require('./libs/response');
    const logStruct = (func, error) => {
@@ -72,7 +72,7 @@ const {successResponse, errorResponse} = require('./libs/response');
         const balance = fund_result.balance;
         let wallet =
             { 
-              "wallet_id" : req.body.wallet_id,
+              "wallet_id" : req.user.wallet_id,
               "address" : address,
               "pubKey" : pubKey,
               "privKey" : privKey,
@@ -98,9 +98,7 @@ const {successResponse, errorResponse} = require('./libs/response');
   }
 
   router.post('/wallet/test/fund', validateToken, [
-    check('wallet_id', 'Wallet id is required').not().isEmpty(),
     check('passphrase', 'Please include a passphrase').not().isEmpty()
-    //check('username', 'Username is required').not().isEmpty()
   ], async(req, res, next) => {
     const response = await createFundXrpWalletTestNet(req, res);
     return res.status(response.status).send(response)
@@ -146,7 +144,6 @@ const {successResponse, errorResponse} = require('./libs/response');
   }
 
   router.post('/wallet/test/account', validateToken, [
-    check('wallet_id', 'Wallet id is required').not().isEmpty(),
     check('passphrase', 'Please include a passphrase').not().isEmpty()
   ], async(req, res, next) => {
     const response = await getXrpWalletTestNetAccountInfo(req, res);
@@ -179,7 +176,7 @@ const {successResponse, errorResponse} = require('./libs/response');
            toXrp = toAddress;
         }
         else {
-           toXrp = process.env.XRP_ESCROW_ACCOUNT;
+           toXrp = config.ESCROW_XRP;
         }
 
         const tx = {
@@ -229,7 +226,6 @@ const {successResponse, errorResponse} = require('./libs/response');
   }
 
   router.post('/test/payment', validateToken, [
-    check('wallet_id', 'Wallet id is required').not().isEmpty(),
     check('passphrase', 'Please include a passphrase').not().isEmpty(),
     check('amount', 'Amount is required').isNumeric().not().isEmpty()
   ], async(req, res, next) => {
@@ -238,7 +234,6 @@ const {successResponse, errorResponse} = require('./libs/response');
   });
 
   router.post('/test/transfer', validateToken, [
-    check('wallet_id', 'Wallet id is required').not().isEmpty(),
     check('passphrase', 'Please include a passphrase').not().isEmpty(),
     check('amount', 'Amount is required').isNumeric().not().isEmpty(),
     check('to', 'Destination address is required').isAlphanumeric().not().isEmpty(),

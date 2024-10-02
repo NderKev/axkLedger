@@ -1,11 +1,9 @@
 'use strict';
 
-const config = require('../server/psql/config');
-
-//dotenv.config();
+const config = require('./config');
 
 const http = require('http');
-const port = config.B_PORT || '4055';
+const port = config.PORT || '4055';
 
 const app = require('./app');
 
