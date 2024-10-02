@@ -137,8 +137,8 @@ exports.getFarmerByWalletId = async (data) => {
   exports.getJWTFarmerToken = async (data) => {
     const query = db.read.select('axk_sc_farmers_jwt.wallet_id', 'axk_sc_farmers_jwt.address', 'axk_sc_farmers_jwt.token', 'axk_sc_farmers_jwt.expiry')
     .from('axk_sc_farmers_jwt')
-    .where('token', '=', data.token)
-    .where('wallet_id', '=', data.wallet_id);
+    .where('token', '=', data)
+    .orWhere('wallet_id', '=', data);
     console.info("query -->", query.toQuery())
     return query;
   };

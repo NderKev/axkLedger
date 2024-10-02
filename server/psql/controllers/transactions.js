@@ -20,7 +20,8 @@ exports.createTransaction = async (req, res) => {
       }
       if (req.body.wallet_id !== walletid) {
         return res.status(403).json({ msg : 'user wallet id mismatch' });
-      }  
+      }
+      //req.body.wallet_id == walletid;  
       const response = await transactions.createTransaction(req.body);
       return res.status(200).json(response);
     } catch (error) {

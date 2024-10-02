@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const config = require('../config');
-const farmerModel = require('../models/farmers');
+//const farmerModel = require('../models/farmers');
 
 const validateToken = (req, res, next) => {
   const token = req.header('x-auth-token');
@@ -14,55 +14,46 @@ const validateToken = (req, res, next) => {
         console.error(err);
       } else {
         const role = decoded.data.role;
-        if (role !== "null" && role === "admin"){
-          console.log(role);
-          req.admin = decoded.data; 
-          req.admin.token = token;
-          //console.log(req.admin.token);
+        if (role !== "null" && role !== "buyer"){
+           return res.status(401).json({ msg: 'Only Buyer Allowed!' });
         }
-        else {
-          req.user = decoded.data;
-          req.user.token = token;
-          //console.log(req.user.token);
-        }
-        
+        req.user = decoded.data;
+        req.user.token = token;
         next();
       }
     });
   } catch (err) {
-    console.error('Internal auth error in token validation middleware');
+    console.error('Internal auth error in user token validation middleware');
     res.status(500).json({ msg: 'Internal auth error user' });
   }
 };
 
 const validateAdmin = (req, res, next) => {
-  const token = req.admin.token; 
-  const admin =  req.admin;
-  if (!token || !admin ) return res.status(403).json({ msg: 'Unauthorized request!' });
+  const token = req.header('x-admin-token'); 
+  if (!token ) return res.status(403).json({ msg: 'Unauthorized request!' });
   try {
     jwt.verify(token, config.JWT_SECRET, (err, decoded) => {
       if (err) {
         res.status(401).json({ msg: 'Unauthorized request!' });
         console.error(err);
       } else { 
-        if (decoded.data.wallet_id !== admin.wallet_id ){
+        const role = decoded.data.role;
+        if (role !== "admin" ){
           res.status(404).json({ msg: 'Only Admin allowed!'});
         }
         req.admin = decoded.data;
-        req.admin.token = token;
-        //console.log(req.admin.token);
+        req.admin.token = token;    
         next();
       }
     });
   } catch (err) {
-    console.error('Internal auth error in token validation middleware');
+    console.error('Internal auth error in admin token validation middleware');
     res.status(500).json({ msg: 'Internal auth error admin' });
   }
 };
 
 const validateFarmer = (req, res, next) => {
   const token = req.header('x-farmer-token');
-  //const admin =  req.admin;
   if (!token) return res.status(401).json({ msg: 'Unauthorized request!' });
   try {
     jwt.verify(token, config.FRM_SECRET, (err, decoded) => {
@@ -72,7 +63,6 @@ const validateFarmer = (req, res, next) => {
       } else {
          req.farmer = decoded.farmer;
          req.farmer.token = token;
-         //console.log(req.farmer.token);
         next();
       }
     });

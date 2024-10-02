@@ -358,67 +358,54 @@ exports.login = async (req, res) => {
     try {
     const token = req.header('x-auth-token');
     const farmer_token = req.header('x-farmer-token');
-    const {wallet_id} = req.body;
+    const admin_token = req.header('x-admin-token');
     var timeNow = Math.floor(Date.now() / 1000);
     let updateToken;
-    if (!token && !farmer_token && !wallet_id) return res.status(403).json({ msg: 'Unauthorized request!' });
-    if (token && wallet_id){
-      const curr_token = await users.getCurrentTokenUser({wallet_id : wallet_id, token : token});
+    if (!token && !farmer_token) return res.status(403).json({ msg: 'Unauthorized request!' });
+    if (token){
+      const curr_token = await users.getCurrentTokenUser(token);
       if (!curr_token && !curr_token.length) return res.status(401).json({ msg: 'Unexisting user jwt db!' });
       const expiry = curr_token[0].expiration;
       const wid = curr_token[0].wallet_id;
-      if (expiry <= timeNow && wid == wallet_id) {
-        const user_token = await users.genToken(wallet_id);
+      if (expiry <= timeNow) {
+        const user_token = await users.genToken(wid);
         await users.updateCurrentUserToken({token: token, new_token : user_token.token, expiration : user_token.expiration});
         updateToken = await users.verifyToken(user_token.token);
         return res.send(updateToken);
        }
-      if (expiry > timeNow && wid == wallet_id){
+      else if (expiry > timeNow){
           updateToken = await users.verifyToken(token);
           return res.send(updateToken);
       }
-     if (wid !== wallet_id) {
+     else {
         return res.status(403).json({ msg : 'invalid user token details' });
       }
     }
-    /** else if (admin && pin !== 'null' ){
-      const curr_token = await users.getCurrentTokenUser({wallet_id : admin.wallet_id, token : token});
+    else if (admin_token){
+      const curr_token = await users.getCurrentTokenUser(admin_token);
       if (!curr_token && !curr_token.length) return res.status(401).json({ msg: 'Unexisting admin jwt db!' });
-      await this.authenticatePinAdmin(req, res);
-      const expiry = curr_token[0].expiration;
-      const _wid = admin.wallet_id;
       const wid = curr_token[0].wallet_id;
-      if (expiry > timeNow && wid == _wid){
-        updateToken = await users.verifyToken(token);
-        return res.send(updateToken);
-      }
-      else if (expiry < timeNow && wid == _wid) {
-        const adm_token = await users.genToken(admin.wallet_id);
+      if (expiry <= timeNow) {
+        const adm_token = await users.genToken(wid);
         await users.updateCurrentUserToken({token: token, new_token : adm_token.token, expiration : adm_token.expiration});
         updateToken = await users.verifyToken(adm_token.token);
         return res.send(updateToken);
       }
-      else if (wid !== _wid) {
+      else if (expiry > timeNow) {
+        updateToken = await users.verifyToken(admin_token);
+        return res.send(updateToken);
+      }
+      else  {
         return res.status(403).json({ msg : 'invalid admin token details' });
       }
-      else {
-        return res.status(404).json({ msg : 'error refreshing token admin' });
-      }
-    } **/
-    else if (farmer_token && wallet_id){
-      const frm_token = await farmers.getJWTFarmerToken({token : farmer_token, wallet_id : wallet_id});
+    } 
+    else if (farmer_token){
+      const frm_token = await farmers.getJWTFarmerToken(farmer_token);
       if (!frm_token && !frm_token.length) return res.status(401).json({ msg: 'Unexisting farmer jwt db!' });
       const expiry = frm_token[0].expiry;
       const address = frm_token[0].address;
       const fid = frm_token[0].wallet_id;
-      
-      //const _address = farmer.address;
-      if (expiry > timeNow && fid == wallet_id ){ 
-        updateToken = await farmers.verifyToken(farmer_token);
-        return updateToken;
-      }
-      
-      if (expiry < timeNow && fid == wallet_id){
+      if (expiry <= timeNow){
         let payload = {
           farmer : {
             wallet_id: fid,
@@ -431,13 +418,16 @@ exports.login = async (req, res) => {
         updateToken = await farmers.verifyToken(token.token);
         return res.send(updateToken);
       }
-
-      if (fid !== wallet_id) {
+      else if (expiry > timeNow){ 
+        updateToken = await farmers.verifyToken(farmer_token);
+        return updateToken;
+      }
+      else {
         return res.status(403).json({ msg : 'invalid farmer token details' });
       }
     }
     else {
-      return res.status(404).json({ msg : 'no required parameters for refreshing user token' });
+        return res.status(404).json({ msg : 'no required parameters for refreshing user token' });
     } 
   } catch (err) {
     console.error(err.message + ': Internal auth error in token refresh controller');

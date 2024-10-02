@@ -396,8 +396,8 @@ exports.getUserTokenById = async (token) => {
 exports.getCurrentTokenUser = async (data) => {
   const query = db.read.select('axk_auth_jwt.wallet_id', 'axk_auth_jwt.token', 'axk_auth_jwt.expiration')
   .from('axk_auth_jwt')
-  .where('wallet_id', '=', data.wallet_id)
-  .where('token', '=', data.token);
+  .where('wallet_id', '=', data)
+  .orWhere('token', '=', data);
   console.info("query -->", query.toQuery())
   return query;
 };

@@ -1,21 +1,21 @@
 const express = require('express');
 const router = express.Router();
 const { check } = require('express-validator');
-const { validateAdmin, validateToken, validateFarmer } = require('../../middleware/auth');
+const { validateAdmin, validateFarmer } = require('../../middleware/auth');
 const adminController = require('../../controllers/admin');
 const {refreshToken} = require('../../controllers/auth');
 const farmerController = require('../../controllers/farmers');
 const transactions = require('../../controllers/transactions');
 
 
-router.get('/', validateToken, validateAdmin, adminController.getAdmin);
-router.get('/buyers', validateToken, validateAdmin, adminController.getBuyers);
-router.get('/farmers', validateToken, validateAdmin, farmerController.getFarmers);
-router.get('/permission', validateToken, validateAdmin, adminController.getUserPermission);
-router.get('/permissions', validateToken, validateAdmin, adminController.getUserPermissions);
-router.get('/pin', validateToken, validateAdmin, adminController.getAdminPin);
-router.get('/roles', validateToken, validateAdmin, adminController.getUserRoles);
-router.get('/txs', validateToken, validateAdmin, transactions.getAllTransactions);
+router.get('/', validateAdmin, adminController.getAdmin);
+router.get('/buyers',  validateAdmin, adminController.getBuyers);
+router.get('/farmers',  validateAdmin, farmerController.getFarmers);
+router.get('/permission',  validateAdmin, adminController.getUserPermission);
+router.get('/permissions',  validateAdmin, adminController.getUserPermissions);
+router.get('/pin',  validateAdmin, adminController.getAdminPin);
+router.get('/roles',  validateAdmin, adminController.getUserRoles);
+router.get('/txs',  validateAdmin, transactions.getAllTransactions);
 
 
 router.post(
@@ -30,7 +30,6 @@ router.post(
 router.post(
     '/admin',
     [
-     // check('name', 'Name is required').not().isEmpty(),
       check('email', 'Please include a valid email').isEmail(),
       check(
         'password',
@@ -38,7 +37,6 @@ router.post(
         'Password must contain alphabets and numbers',
       ).isLength({ min: 12 }).isAlphanumeric(),
     ],
-    validateToken,
     validateAdmin,
     adminController.createAdminUser,
   );
@@ -49,8 +47,7 @@ router.post(
       check('wallet_id', 'Wallet ID is required').not().isEmpty(),
       check('role_id', 'Please include a valid role').isInt().not().isEmpty(),
       check('user_role', 'User Role is required').not().isEmpty(),
-    ],
-    validateToken,
+    ],   
     validateAdmin,
     adminController.updateUserPermission,
   );
@@ -59,8 +56,7 @@ router.post(
     '/role',
     [
       check('role', 'User Role is required').isString().exists(),
-    ],
-    validateToken,
+    ],    
     validateAdmin,
     adminController.createUserRole,
   );
@@ -70,8 +66,7 @@ router.post(
     [
       check('role_id', 'User Role ID is required').isInt().exists(),
       check('role', 'User Role is required').isString().exists(),
-    ],
-    validateToken,
+    ],   
     validateAdmin,
     adminController.updateUserRole,
   );
@@ -82,7 +77,6 @@ router.post(
       check('x-auth-token', 'admin token is required').isJWT().exists(),
       check('address', 'farmer address id is required').isEthereumAddress().exists(),
     ],
-    validateToken,
     validateAdmin,
     farmerController.updateFarmerToken,
   );
@@ -93,8 +87,7 @@ router.post(
       check('x-farmer-token', 'farmer token is required').exists(),
       check('wallet_id', 'farmer wallet id is required').exists(),
       check('address', 'farmer address id is required').exists(),
-    ],
-    validateToken,
+    ],   
     validateAdmin,
     validateFarmer,
     refreshToken,
@@ -104,17 +97,15 @@ router.post(
     '/pin',
     [
       check('pin', 'Pin is required').isNumeric().exists(),
-    ],
-    validateToken,
+    ],   
     validateAdmin,
     adminController.createAdminPin,
   );
 
-  router.post(
+  router.get(
     '/refresh',
     [
-      check('x-auth-token', 'authetication token is required').isJWT().exists(),
-      check('wallet_id', 'Wallet ID is required').isAlphanumeric().not().isEmpty(),
+      check('x-auth-token', 'authetication token is required').isJWT().exists()
     ],
     refreshToken,
   );

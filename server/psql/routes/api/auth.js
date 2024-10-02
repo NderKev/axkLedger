@@ -47,11 +47,10 @@ router.post(
   createFarmerKey,
 );
 
-router.post(
+router.get(
   '/refresh',
   [
-    check('x-auth-token', 'authetication token is required').isJWT().exists(),
-    check('wallet_id', 'Wallet ID is required').isAlphanumeric().not().isEmpty(),
+    check('x-auth-token', 'authetication token is required').isJWT().exists()
   ],
   authController.refreshToken,
 );
