@@ -105,7 +105,7 @@ router.post(
   router.get(
     '/refresh',
     [
-      check('x-auth-token', 'authetication token is required').isJWT().exists()
+      check('x-admin-token', 'authetication token is required').isJWT().exists()
     ],
     refreshToken,
   );
