@@ -86,14 +86,11 @@ exports.login = async (req, res) => {
   };
 
   exports.authenticateUser = async(req, res) => {
-    if (req.body.wallet_id !== req.user.wallet_id) {
-      return res.status(403).json({ msg : 'user wallet id mismatch' });
-    }
     if (req.admin) {
       return res.status(403).json({ msg : 'Unauthorized User request' });
     }
     const comb = req.body.passphrase + req.user.user;
-    const _passphrase = await walletModel.getWallet(req.body.wallet_id);
+    const _passphrase = await walletModel.getWallet(req.user.wallet_id);
     let auth_data = {};
     const _pass = _passphrase.length;
     if (!_pass || _pass <= 0 ){
@@ -106,8 +103,8 @@ exports.login = async (req, res) => {
       return auth_data;
     }
     else {
-      const _evm = await walletModel.getEVM(req.body.wallet_id);
-      const _btc = await walletModel.getBTC(req.body.wallet_id);
+      const _evm = await walletModel.getEVM(req.user.wallet_id);
+      const _btc = await walletModel.getBTC(req.user.wallet_id);
       const matchPwd = bcrypt.compareSync(String(comb), _passphrase[0].passphrase);
       if (!matchPwd) {
       return res.status(401).json({ msg : 'invalid_password' });
@@ -147,13 +144,9 @@ exports.login = async (req, res) => {
     if (req.user) {
       return res.status(403).json({ msg : 'Unauthorized Admin request' });
     }
-
-    if (req.body.wallet_id !== req.admin.wallet_id) {
-      return res.status(403).json({ msg : 'admin wallet id mismatch' });
-    }
     
     const comb = req.body.pin + req.admin.user;
-    const _wallet = await walletModel.getWallet(req.body.wallet_id);
+    const _wallet = await walletModel.getWallet(req.admin.wallet_id);
     let  admin_data = {};
     const _len = _wallet.length;
     if (!_len || _len <= 0){
@@ -166,8 +159,8 @@ exports.login = async (req, res) => {
       return admin_data;
     }
     else {
-    const eth = await walletModel.getEVM(req.body.wallet_id);
-    const btc = await walletModel.getBTC(req.body.wallet_id);
+    const eth = await walletModel.getEVM(req.admin.wallet_id);
+    const btc = await walletModel.getBTC(req.admin.wallet_id);
     const matchPwd = bcrypt.compareSync(String(comb), _wallet[0].passphrase);
     if (!matchPwd) {
       return res.status(401).json({ msg : 'invalid_password' });

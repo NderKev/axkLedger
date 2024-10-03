@@ -5,12 +5,14 @@ exports.up = function (knex) {
         table.string('farmer_id').index().references('wallet_id').inTable('axk_sc_farmers').onDelete('restrict').onUpdate('cascade').notNullable();
         table.integer('lot_number').unsigned().unique().notNullable();
         table.string('name').notNullable();
-        table.string('url');
+        table.string('image');
+        table.integer('price').unsigned().notNullable();
+        table.string('currency').notNullable();
         table.integer('quantity').unsigned().notNullable();
-        table.integer('price').unsigned();
-        table.string('currency');
+        table.string('quality', 1000).unique();
         table.tinyint('available');
-        table.mediumtext('description').unique();
+        table.string('latitude');
+        table.string('longitude');
         table.timestamps();
       })
     ])

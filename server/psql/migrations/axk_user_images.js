@@ -3,7 +3,8 @@ exports.up = function (knex) {
       knex.schema.createTable('axk_user_images', function (table) {
         table.increments().primary();
         table.string('user_id').index().references('wallet_id').inTable('axk_users').onDelete('restrict').onUpdate('cascade').notNullable();
-        table.string('path');
+        table.string('path').notNullable();
+        table.string('name').notNullable();
         table.timestamps();
       })
     ])

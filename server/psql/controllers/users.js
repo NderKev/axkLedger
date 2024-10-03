@@ -74,6 +74,34 @@ exports.generateUniqueId = function(length){
     }
   };
 
+  exports.createProfilePicture = async (req, res) => {
+    const errors = validationResult(req);
+  
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    //const { wallet_id, address, tx_hash, mode, value, fiat} = req.body;
+    try {
+      const usr = req.user, adm = req.admin;
+      let walletid;
+      if (usr){
+        walletid = usr.wallet_id;
+      }
+      else {
+        walletid = adm.wallet_id
+      }
+      if (req.body.wallet_id !== walletid) {
+        return res.status(403).json({ msg : 'user wallet id mismatch' });
+      }
+      //req.body.wallet_id == walletid;  
+      const response = await users.createUserProfilePicture(req.body);
+      return res.status(200).json(response);
+    } catch (error) {
+      console.error('createProfilePicture', error.message);
+      return res.status(error.status).json(error.message);
+    }
+  };
+
   exports.sendVerification = async (req, res) => {
     try {
      //let testAccount = await nodemailer.createTestAccount();

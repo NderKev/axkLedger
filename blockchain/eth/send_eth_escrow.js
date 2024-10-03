@@ -14,9 +14,10 @@ const provider = require('./libs/provider');
 const { hdkey, Wallet } = require('@ethereumjs/wallet');
 const transactionModel = require('../../server/psql/models/transactions');
 const walletModel = require('../../server/psql/models/wallet');
+const userModel = require('../../server/psql/models/users');
 const { check, validationResult } = require('express-validator');
 const {validateToken, validateAdmin} = require('../../server/psql/middleware/auth');
-const {authenticateUser, decryptPrivKey} = require('../../server/psql/controllers/auth');
+const {authenticateUser, decryptPrivKey, authenticateAdmin, authenticatePinAdmin, authenticatePin} = require('../../server/psql/controllers/auth');
 const {isAddress} = require("web3-validator");
 const usdtContractAbi = require('./libs/usdtContractAbi');
 const usdtContract = require("./libs/usdtContract");
@@ -100,7 +101,7 @@ const send_ether_to_escrow = async(req, res) => {
      const amount_eth = Number(req.body.amount);
      console.log(amount_eth);
      //if (amount_eth < 0)
-     //console.log();
+     console.log(auth_data);
      const httpProvider = new Web3.providers.HttpProvider(provider.sepolia);
      const web3 = new Web3(httpProvider);
      const ethBalance = await web3.eth.getBalance(auth_data.evm.address);

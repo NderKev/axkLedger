@@ -1,23 +1,22 @@
 const axios = require('axios');
 require('dotenv').config();
-const moment = require('moment');
+//const moment = require('moment');
 const express = require('express');
 const router  = express.Router();
-const relayJs = require('./relayBTC');
-//let test_tx = process.env.TESTNET_TX;
+//const relayJs = require('./relayBTC');
+const config = require('../config');
 const {successResponse, errorResponse} = require('./lib/response');
-const { conforms } = require('lodash');
 const logStruct = (func, error) => {
  return {'func': func, 'file': 'checkStatus', error}
 }
 
 let transaction = "https://api.blockcypher.com/v1/btc/test3/txs"
-let mainnet = process.env.MAINNET_URL;
-let main_tx = process.env.MAINNET_TX;
-let test_api = process.env.TESTNET_API;
+let mainnet = config.MAINNET_URL;
+let main_tx = config.MAINNET_TX;
+let test_api = config.TESTNET_API;
 
 
-let token = process.env.BLOCKCIPHER_TOKEN;
+let token = config.BLOCKCIPHER_TOKEN;
 
 const transactionStatus = async(hash, token)=>{
     try {
@@ -177,7 +176,7 @@ const transactionStatus = async(hash, token)=>{
 router.post('/test/record/ext',  async(req, res, next) => {
   //req.body.user_id = req.session.user_id;
 
-  req.body.address = process.env.ESCROW_ACCOUNT_BTC; //"mnxW3nw6AVfAXE55vsoMkyGEGmB9KnWm4N";
+  req.body.address = config.ESCROW_ACCOUNT_BTC; //"mnxW3nw6AVfAXE55vsoMkyGEGmB9KnWm4N";
   let status = await checkValidTx(req.body);
   return res.status(status.status).send(status.data);
 })
@@ -185,7 +184,7 @@ router.post('/test/record/ext',  async(req, res, next) => {
 
 router.post('/test/withdraw/ext',  async(req, res, next) => {
   //req.body.user_id = req.session.user_id;
-  req.body.address = process.env.ESCROW_ACCOUNT_BTC;//"mnxW3nw6AVfAXE55vsoMkyGEGmB9KnWm4N";
+  req.body.address = config.ESCROW_ACCOUNT_BTC;//"mnxW3nw6AVfAXE55vsoMkyGEGmB9KnWm4N";
   let status = {};
   let txStatus = await checkValidTx(req.body);
   if (txStatus.success && txStatus.data){

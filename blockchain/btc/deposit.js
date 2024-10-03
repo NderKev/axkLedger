@@ -1,20 +1,20 @@
 const axios = require('axios');
-require('dotenv').config();
+//require('dotenv').config();
 const moment = require('moment');
 const express = require('express');
 const router  = express.Router();
-//let test_tx = process.env.TESTNET_TX;
+//let test_tx = config.TESTNET_TX;
 const {successResponse, errorResponse} = require('./lib/response');
-const { conforms } = require('lodash');
+const config = require('../config');
 const logStruct = (func, error) => {
  return {'func': func, 'file': 'Deposit', error}
 }
 
-let token = process.env.BLOCKCIPHER_TOKEN;
+let token = config.BLOCKCIPHER_TOKEN;
 let transaction = "https://api.blockcypher.com/v1/btc/test3/txs"
-let mainnet = process.env.MAINNET_URL;
-let main_tx = process.env.MAINNET_TX;
-let test_api = process.env.TESTNET_API;
+let mainnet = config.MAINNET_URL;
+let main_tx = config.MAINNET_TX;
+let test_api = config.TESTNET_API;
 
 const checkValidDeposit = async (data) => {
   try {

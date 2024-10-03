@@ -330,6 +330,18 @@ exports.deleteFromUserRole = async (id) => {
   return query;
 };
 
+exports.createUserProfilePicture = async (data) => {
+  const createdAt = moment().format('YYYY-MM-DD HH:mm:ss');
+  const query = db.write('axk_user_images').insert({
+    user_id: data.wallet_id,
+    path: data.path,
+    name: data.name,
+    created_at: createdAt,
+    updated_at: createdAt
+  });
+  console.info("query -->", query.toQuery())
+  return query;
+};
 
 /** exports.getUserPermission = async (wallet_id) => {
   const query = db.read.select('axk_user_role.role')
@@ -746,3 +758,5 @@ catch(err){
   return resp;
 }
 }
+
+

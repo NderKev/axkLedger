@@ -2,9 +2,7 @@ const bitcoin = require('bitcoinjs-lib');
 const bip32 = require('bip32')
 const bip39 = require('bip39')
 const assert = require('assert');
-require('dotenv').config();
-//const express = require('express');
-const { builtinModules } = require('module');
+
 
 const testnet = bitcoin.networks.testnet;
 

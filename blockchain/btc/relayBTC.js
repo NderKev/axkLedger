@@ -14,7 +14,6 @@
    const CryptoJS = require("crypto-js");
    const bcrypt = require('bcryptjs');
    const pinHash = require('sha256');
-   const { bindAll } = require('lodash');
    const transactions = require('../../server/psql/models/transactions');
    const { check, validationResult } = require('express-validator');
    const { validateToken, validateAdmin } = require('../../server/psql/middleware/auth');
@@ -40,13 +39,13 @@
    
    const decodeRawTransaction = async(rawTx, token)=>{
      try {
-       //const tx = JSON.stringify(rawTx);
+       const tx = JSON.stringify(rawTx);
        let decode_url = `${decode}?token=${token}`
        const config = {
         method : 'post',
         url : decode_url,
         headers: { },
-        data : rawTx
+        data : tx
       }
        let response = await axios(config);
        return  successResponse(200, response.data);
@@ -76,13 +75,13 @@
   }
    const pushRawTransaction = async(rawTx, token)=>{
     try {
-      
+      const tx = JSON.stringify(rawTx);
       let push_url = `${push}?token=${token}`
       const config = {
         method : 'post',
         url : push_url,
         headers: { },
-        data : rawTx
+        data : tx
       }
       let response = await axios(config);
       return  successResponse(200, response.data);
@@ -500,6 +499,8 @@
         txObj.value = change;
         txObj.fiat = change_;
         await transactions.createTransaction(txObj);
+        //const decTx = await decodeRawTransaction(JSON.stringify(sentObj.rawTx), token);
+        //console.log(decTx);
         return successResponse(201, sentObj, {txHash : tx_hash}, 'btc sent');
         //implement sendRawTX
         
