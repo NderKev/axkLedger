@@ -10,6 +10,7 @@ if (process.env.NODE_ENV !== 'production') {
 module.exports = {
   PORT: process.env.PORT || 8000,
   JWT_SECRET: process.env.JWT_SECRET,
+  ADM_SECRET: process.env.ADM_SECRET,
   FRM_SECRET: process.env.FRM_SECRET,
   DB_HOST: process.env.DB_HOST,
   DB_PORT: process.env.DB_PORT,
@@ -18,6 +19,7 @@ module.exports = {
   DB_NAME: process.env.DB_NAME,
   NODE_ENV: process.env.NODE_ENV,
   JWT_TOKEN_EXPIRES_IN: 3600000 * 24,
+  JWT_ADM_EXPIRES_IN: 3600000 * 12,
   JWT_FARMER_EXPIRY: 3600000 * 48,
   SMTP_HOST: process.env.SMTP_HOST,
   SMTP_PORT: process.env.SMTP_PORT,

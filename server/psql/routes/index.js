@@ -5,6 +5,7 @@ const configureRoutes = (app) => {
     //app.use('/axkledger/v1/api/mails', require('./api/mails'));
     app.use('/axkledger/v1/api/wallet', require('./api/wallet'));
     app.use('/axkledger/v1/api/tx', require('./api/transactions'));
+    app.use('/axkledger/v1/api/upload', require('./api/upload'));
    
     app.use('/', (req, res) => {
       res.status(200).send('Welcome to axkledger!');

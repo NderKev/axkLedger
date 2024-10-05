@@ -178,7 +178,7 @@ exports.createAdminUser = async (req, res) => {
         return res.status(400).json({ errors: [{ msg: 'User not registered yet' }] });
       }
       
-      if (user[0].id != 1 && user[0].id != 3){
+      if (user[0].id != 1){
         return res.status(403).json({ errors: [{ msg: 'user id flagged contact admin for asistance' }] });
       }
 

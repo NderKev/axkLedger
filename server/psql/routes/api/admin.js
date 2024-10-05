@@ -74,7 +74,7 @@ router.post(
   router.post(
     '/farmer/token',
     [
-      check('x-auth-token', 'admin token is required').isJWT().exists(),
+      check('x-admin-token', 'admin token is required').isJWT().exists(),
       check('address', 'farmer address id is required').isEthereumAddress().exists(),
     ],
     validateAdmin,

@@ -19,6 +19,11 @@ exports.getFarmerByWalletId = async (data) => {
     return query;
   };
   
+  exports.getAllFarmers = async () => {
+    const query = db.read.select('axk_sc_farmers.*')
+    .from('axk_sc_farmers')
+    return query;
+  };
   
   exports.checkFarmerExists = async (data) => {
     const query = db.read.select('axk_sc_farmers.wallet_id', 'axk_sc_farmers.address')

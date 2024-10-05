@@ -353,10 +353,10 @@ exports.login = async (req, res) => {
     const farmer_token = req.header('x-farmer-token');
     const admin_token = req.header('x-admin-token');
     var timeNow = Math.floor(Date.now() / 1000);
-    let updateToken;
-    if (!token && !farmer_token) return res.status(403).json({ msg: 'Unauthorized request!' });
+    let updateToken, curr_token;
+    if (!token && !farmer_token && !admin_token ) return res.status(403).json({ msg: 'Unauthorized request!' });
     if (token){
-      const curr_token = await users.getCurrentTokenUser(token);
+      curr_token = await users.getCurrentTokenUser(token);
       if (!curr_token && !curr_token.length) return res.status(401).json({ msg: 'Unexisting user jwt db!' });
       const expiry = curr_token[0].expiration;
       const wid = curr_token[0].wallet_id;
@@ -375,9 +375,10 @@ exports.login = async (req, res) => {
       }
     }
     else if (admin_token){
-      const curr_token = await users.getCurrentTokenUser(admin_token);
+      curr_token = await users.getCurrentTokenUser(admin_token);
       if (!curr_token && !curr_token.length) return res.status(401).json({ msg: 'Unexisting admin jwt db!' });
       const wid = curr_token[0].wallet_id;
+      const expiry = curr_token[0].expiration;
       if (expiry <= timeNow) {
         const adm_token = await users.genToken(wid);
         await users.updateCurrentUserToken({token: token, new_token : adm_token.token, expiration : adm_token.expiration});
@@ -385,7 +386,7 @@ exports.login = async (req, res) => {
         return res.send(updateToken);
       }
       else if (expiry > timeNow) {
-        updateToken = await users.verifyToken(admin_token);
+        updateToken = await users.verifyAdminToken(admin_token);
         return res.send(updateToken);
       }
       else  {

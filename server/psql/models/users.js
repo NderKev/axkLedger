@@ -322,7 +322,7 @@ exports.updateRoleTime = async (data) => {
 };
 
 exports.deleteFromUserRole = async (id) => {
-  console.log("del to cart model", id)
+  console.log("del to user role", id)
   const query = db.write('axk_user_role')
   .from('axk_user_role')
   .where('id', '=', id)
@@ -343,6 +343,25 @@ exports.createUserProfilePicture = async (data) => {
   return query;
 };
 
+exports.updateUserProfilePicture = async (data) => {
+  const query = db.write('axk_user_images')
+    .where('user_id', data.wallet_id)
+    .update({
+      path : data.path,
+      name : data.name,
+      updated_at : moment().format('YYYY-MM-DD HH:mm:ss')
+    });
+  console.info("query -->", query.toQuery())
+  return query;
+};
+
+exports.getUserProfilePicture = async (wallet_id) => {
+  const query = db.read.select('axk_user_images.*')
+  .from('axk_user_images')
+  .where('user_id', '=', wallet_id);
+  console.info("query -->", query.toQuery())
+  return query;
+};
 /** exports.getUserPermission = async (wallet_id) => {
   const query = db.read.select('axk_user_role.role')
   .from('axk_user_permission')
@@ -471,6 +490,35 @@ catch(err){
 }
 }
 
+exports.genAdminToken = function (user, pass, role){
+  try{
+ var tk = {};
+  jwt.sign({
+    data: {
+      wallet_id: user,
+      user: pass,
+      role : role
+    }
+  }, config.ADM_SECRET , { expiresIn: config.JWT_ADM_EXPIRES_IN }, (err, decoded) =>{
+    if(err) {
+       tk.error = err.message;
+       return tk;
+    }
+    else{
+    tk.token = decoded;
+    //console.log(tk)
+
+  }
+})
+return tk;
+}
+catch(err){
+     tk.error = err.message;
+     return  err.message;
+}
+}
+
+
 exports.genEmailToken = function (user,pass){
   try{
  var tk = {};
@@ -516,6 +564,26 @@ catch(err){
      return tokenVer;
 }
 }
+
+function getExpDateAdm(tkn){
+  try{
+   var tokenVer = {};
+  jwt.verify(tkn, config.ADM_SECRET, (err, decoded) => {
+    if (err) throw err;
+    else{
+    tokenVer.data = decoded;
+    //console.log(tokenVer)
+  }
+})
+return tokenVer;
+//console.log(tokenVer);
+}
+catch(err){
+    tokenVer.error = err.message;
+     return tokenVer;
+}
+}
+
  function sleep(ms){
    return new Promise(resolve => setTimeout(resolve, ms));
  }
@@ -561,7 +629,7 @@ exports.updateToken = async (reqData) => {
   let _id = userExists[0].wallet_id;
   let _role = checkId.role;
   let role = db_role[0].role;
-  if(_expiry <= timeNow || _checkId !== _id || _role !== role && role !== 'admin' && _role !== 'admin'){
+  if(_expiry <= timeNow  & role != "admin"|| role != "admin" && _checkId !== _id){
     var newToken = await userModel.genAuthToken(userExists[0].wallet_id, userExists[0].name, role);
      await sleep(1000);
      if (newToken){
@@ -581,7 +649,7 @@ exports.updateToken = async (reqData) => {
      return token;
    }
 
-   else  {
+   else if (_expiry > timeNow  && role != "admin")  {
      token.wallet_id = userExists[0].wallet_id;
      token.message = 'valid';
      token.expiration = currentToken[0].expiration;
@@ -589,14 +657,75 @@ exports.updateToken = async (reqData) => {
       //console.log(token);
      return token;
    }
+   else if(_expiry <= timeNow  && role == "admin" || role == "admin" && _checkId !== _id ){
+    var newToken = await userModel.genAdminToken(userExists[0].wallet_id, userExists[0].name, role);
+     await sleep(1000);
+     if (newToken){
+       var tkExp = getExpDateAdm(newToken.token);
+       await sleep(1000);
+       token.wallet_id = userExists[0].wallet_id;
+       token.expiration = tkExp.data.exp;
+       token.token = newToken.token;
+       input.wallet_id = userExists[0].wallet_id;
+       input.token = newToken.token;
+       input.expiration = tkExp.data.exp;
+       const response = await userModel.updateUserToken(input);
+       if (response && response.length){
+         token.message = 'updated';
+       }
+     }
+     return token;
+   }
+   else if (_expiry > timeNow  && role == "admin")  {
+    const curr_token = await userModel.verifyAdminToken(_token);
+    console.log(curr_token);
+    if (!curr_token || curr_token.error || curr_token.message == "error" || curr_token.role == "error"){
+      var new_token = await userModel.genAdminToken(userExists[0].wallet_id, userExists[0].name, role);
+      await sleep(1000);
+     if (new_token){
+       var tkExp = getExpDateAdm(new_token.token);
+       await sleep(1000);
+       token.wallet_id = userExists[0].wallet_id;
+       token.expiration = tkExp.data.exp;
+       token.token = new_token.token;
+       input.wallet_id = userExists[0].wallet_id;
+       input.token = new_token.token;
+       input.expiration = tkExp.data.exp;
+       const response = await userModel.updateUserToken(input);
+       if (response && response.length){
+         token.message = 'updated';
+       }
+     }
+     return token;
+   }
+    else {
+    token.wallet_id = userExists[0].wallet_id;
+    token.message = 'valid';
+    token.expiration = currentToken[0].expiration;
+    token.token = currentToken[0].token;
+     //console.log(token);
+    return token;
+    }
+  }
     }
  else { //(!currentToken && !currentToken.length)
     var usr_role = await this.getUserPermission(userExists[0].wallet_id);
-    var initToken = await userModel.genAuthToken(userExists[0].wallet_id, userExists[0].name, usr_role[0].role);
-     await sleep(1000);
-     if (initToken){
-       var tkInitExp =  getExpDate(initToken.token);
-       await sleep(1000);
+    let initToken, tkInitExp, curr_role = usr_role[0].role;
+    if (curr_role == "admin"){
+        initToken = await userModel.genAdminToken(userExists[0].wallet_id, userExists[0].name, curr_role);
+        await sleep(1000);
+        tkInitExp = getExpDateAdm(initToken.token);
+        await sleep(1000);
+    }
+    else {
+        initToken = await userModel.genAuthToken(userExists[0].wallet_id, userExists[0].name, curr_role);
+        await sleep(1000);
+        tkInitExp = getExpDate(initToken.token);
+        await sleep(1000);
+
+    }
+     
+     if (initToken && tkInitExp){
        //console.log(tkExp);
        token.wallet_id = userExists[0].wallet_id;
        token.expiration = tkInitExp.data.exp;
@@ -643,6 +772,69 @@ exports.verifyToken = async (token) => {
    var valid = false;
    var resp = {};
   jwt.verify(token, config.JWT_SECRET, (err, decoded) => {
+    if(err) {
+       resp.token = token;
+       resp.expiry = 0;
+       resp.valid = valid;
+       resp.wallet_id = token;
+       resp.user = token;
+       resp.role = "error";
+       resp.message = "error";
+       return resp;
+    }
+    else{
+    //tokenVer.
+    var data = decoded;
+    console.log(data);
+    var expiration = data.exp;//getExpDate(token);
+    //await sleep(1000);
+    let _walletid = data.data.wallet_id;
+    let _user = data.data.user;
+    let _role = data.data.role;
+    var timeNow = Math.floor(Date.now() / 1000);
+    if (expiration <= timeNow){
+      valid = true;
+      resp.token = token;
+      resp.expiry = expiration;
+      resp.valid = valid;
+      resp.wallet_id = _walletid;
+      resp.user = _user;
+      resp.role = _role;
+      resp.message = "expired";
+    }
+    else {
+      valid = true;
+      resp.token = token;
+      resp.expiry = expiration;
+      resp.valid = valid;
+      resp.wallet_id = _walletid;
+      resp.user = _user;
+      resp.role = _role;
+      resp.message = "valid";
+    }
+
+  }
+})
+return resp;
+//console.log(tokenVer);
+}
+catch(err){
+  resp.token = token;
+  resp.expiry = 0;
+  resp.valid = valid;
+  resp.wallet_id = token;
+  resp.user = token;
+  resp.role = "error"
+  resp.message = "error";
+  return resp;
+}
+}
+
+exports.verifyAdminToken = async (token) => {
+  try{
+   var valid = false;
+   var resp = {};
+  jwt.verify(token, config.ADM_SECRET, (err, decoded) => {
     if(err) {
        resp.token = token;
        resp.expiry = 0;
