@@ -193,7 +193,7 @@ const escrowLiskToken = async(req, res) => {
       //console.log(priv_key);
       const transfer_lisk = await axkToken.transferLisk(reqData);
       const txObj = {};
-      txObj.wallet_id = req.body.wallet_id;
+      txObj.wallet_id = req.user.wallet_id;
       txObj.address = auth_resp.evm.address;
       txObj.tx_hash = transfer_lisk.txHash;
       txObj.mode = "lisk";
@@ -203,7 +203,7 @@ const escrowLiskToken = async(req, res) => {
       txObj.fiat = 0;
       await transactionModel.createTransaction(txObj);
       //return res.send({tx: txObj}); //successResponse(200, bal_axk, 'balance'); 
-      return successResponse(201, txObj, {txHash : transfer_lisk.txHash, wallet_id : req.body.wallet_id}, 'lisk sent');
+      return successResponse(201, txObj, {txHash : transfer_lisk.txHash, wallet_id : req.user.wallet_id}, 'lisk sent');
   } catch (error) {
   console.error('error -> ', logStruct('escrowLiskToken', error))
   //return res.send(error.message);

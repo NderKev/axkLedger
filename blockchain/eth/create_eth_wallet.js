@@ -73,19 +73,19 @@ const logStruct = (func, error) => {
     
     const eth_address = decryptPrivKey(auth_evm);
   
-    wallet.wallet_id = req.body.wallet_id;
+    wallet.wallet_id = wallet_id;
     wallet.username = data.user;
     wallet.index = 0;
     wallet.address = eth_address.addr;
     console.log(`
     Wallet generated:
      - Address  : ${eth_address.addr}, 
-     - wallet : ${wallet}
+     - wallet : ${wallet.user}
          
     `)
 
     
-    const evmExists = await walletModel.checkEVM({wallet_id : req.body.wallet_id, address : wallet.address});
+    const evmExists = await walletModel.checkEVM({wallet_id : wallet_id, address : wallet.address});
     if (evmExists && evmExists.length) {
         return res.status(403).json({ msg : 'evmExists' });
       }

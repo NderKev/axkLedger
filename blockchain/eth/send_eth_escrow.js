@@ -172,7 +172,7 @@ const send_ether_to_escrow = async(req, res) => {
        
       await transactionModel.createTransaction(txObj);
       web3.setProvider(httpProvider);
-      return successResponse(201, txObj, {txHash : txObj.tx_hash, wallet_id : req.body.wallet_id}, 'eth sent');
+      return successResponse(201, txObj, {txHash : txObj.tx_hash, wallet_id : walletid}, 'eth sent');
         
       //implement sendRawTX
 
@@ -329,7 +329,7 @@ const send_usdt_usdc_token = async(req, res) => {
        to : req.body.to
      };
      const txObj = {};
-      txObj.wallet_id = req.body.wallet_id;
+      txObj.wallet_id = req.user.wallet_id;
       txObj.address = auth_ver.evm.address;
       txObj.tx_hash = dataTx.txHash;
       txObj.mode = "usdt";
@@ -339,7 +339,7 @@ const send_usdt_usdc_token = async(req, res) => {
       txObj.fiat =   Number(req.body.amount);
 
      await transactionModel.createTransaction(txObj);
-     return successResponse(201, txObj, {txHash : dataTx.txHash, wallet_id : req.body.wallet_id}, 'usdt sent');
+     return successResponse(201, txObj, {txHash : dataTx.txHash, wallet_id : req.user.wallet_id}, 'usdt sent');
   }
 }  catch(error){
   console.error('error -> ', logStruct('send_usdt_usdc_token', error))
