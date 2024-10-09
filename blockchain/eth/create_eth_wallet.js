@@ -92,12 +92,14 @@ const logStruct = (func, error) => {
     
     await walletModel.createEVM({wallet_id : wallet.wallet_id, address : wallet.address, index : wallet.index});
     await walletModel.cryptoBalance({wallet_id : wallet.wallet_id, crypto : "eth", address : wallet.address});
-    await walletModel.cryptoBalance({wallet_id : wallet.wallet_id, crypto : "lisk", address : wallet.address});
-    await walletModel.cryptoBalance({wallet_id : wallet.wallet_id, crypto : "usdc", address : wallet.address});
-    await walletModel.cryptoBalance({wallet_id : wallet.wallet_id, crypto : "usdt", address : wallet.address});
-    await walletModel.cryptoBalance({wallet_id : wallet.wallet_id, crypto : "axk", address : wallet.address});
-    //await walletModel.cryptoBalance({wallet_id : wallet.wallet_id, crypto : "chnt", address : wallet.address});
-    //await walletModel.cryptoBalance({wallet_id : wallet.wallet_id, crypto : "eurc", address : wallet.address});
+    await walletModel.evmBalance({wallet_id : wallet.wallet_id, crypto : "eth", name : "ether", address : wallet.address});
+    await walletModel.evmBalance({wallet_id : wallet.wallet_id, crypto : "lisk", name : "lisk", address : wallet.address});
+    await walletModel.evmBalance({wallet_id : wallet.wallet_id, crypto : "usdc", name : "coinbase usd",  address : wallet.address});
+    await walletModel.evmBalance({wallet_id : wallet.wallet_id, crypto : "usdt", name : "tether",  address : wallet.address});
+    await walletModel.evmBalance({wallet_id : wallet.wallet_id, crypto : "axk", name : "axk token",address : wallet.address});
+    await walletModel.evmBalance({wallet_id : wallet.wallet_id, crypto : "chnt", name : "chinese yen coin", address : wallet.address});
+    await walletModel.evmBalance({wallet_id : wallet.wallet_id, crypto : "eurc", name : "euro coin", address : wallet.address});
+    await walletModel.evmBalance({wallet_id : wallet.wallet_id, crypto : "matic", name : "polygon matic coin", address : wallet.address});
 
     return successResponse(201,wallet, 'evmWalletCreated');
     } catch(error){
@@ -285,6 +287,7 @@ const logStruct = (func, error) => {
          let bal = {}
          bal.wallet_id = walletid;
          bal.crypto = "eth";
+         bal.name = "ether";
          bal.address = userAddress[0].address;
          bal.balance = bal_wei;
          let getPrice = await checkEthPriceUSD();
@@ -299,7 +302,7 @@ const logStruct = (func, error) => {
          console.log(sum);
          bal.usd = sum;
          await walletModel.updateBalance(bal);
-       
+         //await walletModel.updateEvmBalance(bal);
         return successResponse(200, bal, {wallet_id: bal.wallet_id, eth_balance : bal.balance, usd_balance : bal.usd})
       } catch (error) {
         console.error('error -> ', logStruct('calculateEthPrices', error))
