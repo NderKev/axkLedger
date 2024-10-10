@@ -201,9 +201,35 @@ exports.createWif = async (data) => {
     return query;
   };
 
+  exports.evmBalance = async (data) => {
+    const createdAt = moment().format('YYYY-MM-DD HH:mm:ss');
+    const query = db.write('axk_evm_balance').insert({
+      wallet_id: data.wallet_id,
+      crypto: data.crypto,
+      name : data.name,
+      address: data.address,
+      balance: data.balance || 0,
+      usd: data.usd || 0,
+      status: "pending",
+      created_at: createdAt,
+      updated_at: createdAt
+    });
+    console.info("query -->", query.toQuery())
+    return query;
+  };
+
   exports.checkBalance = async (data) => {
     const query = db.read.select('axk_balance.balance', 'axk_balance.usd' )
       .from('axk_balance')
+      .where('wallet_id', data.wallet_id)
+      .where('crypto', data.crypto)
+      .where('address', data.address);   
+      return query;
+  };
+
+  exports.checkEvmBalance = async (data) => {
+    const query = db.read.select('axk_evm_balance.balance', 'axk_evm_balance.usd' )
+      .from('axk_evm_balance')
       .where('wallet_id', data.wallet_id)
       .where('crypto', data.crypto)
       .where('address', data.address);   
@@ -219,8 +245,32 @@ exports.createWif = async (data) => {
       return query;
   };
 
+  exports.getEvmBalance = async (data) => {
+    const query = db.read.select('*')
+      .from('axk_evm_balance')
+      .where('wallet_id', data.wallet_id)
+      .where('crypto', data.crypto)
+      .where('address', data.address);   
+      return query;
+  };
+
   exports.updateBalance = async (data) => {
     const query = db.write('axk_balance')
+      .where('wallet_id', data.wallet_id)
+      .where('crypto', data.crypto)
+      .where('address', data.address)
+      .update({
+        balance : data.balance,
+        usd: data.usd,
+        status: data.status,
+        updated_at : moment().format('YYYY-MM-DD HH:mm:ss')
+      });
+    console.info("query -->", query.toQuery())
+    return query;
+  };
+
+  exports.updateEvmBalance = async (data) => {
+    const query = db.write('axk_evm_balance')
       .where('wallet_id', data.wallet_id)
       .where('crypto', data.crypto)
       .where('address', data.address)

@@ -55,15 +55,20 @@ exports.generateUniqueId = function(length){
       await users.createBuyer(wallet_id);
       const token =  await users.genToken(input);
       await users.createUserToken(token);
+      const email_ver_token = await users.genVerToken(input);
+      await users.createEmailToken(email_ver_token);
+      const link = `${req.protocol}://${req.get('host')}${req.originalUrl}/verify/:${email_ver_token.token}`;
+      console.log("link  :" + link);
        try {
-        await sendEmail(email, WelcomeMail(name));
+        await sendEmail(email, WelcomeMail(name, link));
       } catch (error) {
         console.log(error);
       } 
 
       const resp_user = {
         user : email,
-        token : token
+        token : token,
+        verification_token : email_ver_token
       };
 
       return res.json({resp_user , msg : 'user registered'});
@@ -102,6 +107,37 @@ exports.generateUniqueId = function(length){
     }
   };
 
+  exports.createEmailToken = async (req, res) => {
+    const errors = validationResult(req);
+  
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    //const { wallet_id, address, tx_hash, mode, value, fiat} = req.body;
+    try {
+      const usr = req.user, adm = req.admin;
+      let walletid;
+      if (usr){
+        walletid = usr.wallet_id;
+      }
+      else {
+        walletid = adm.wallet_id
+      }
+     const curr_user_email = await users.getDetailsByWalletId(walletid);
+     const token = await users.genVerToken(curr_user_email[0].email);
+     await users.createEmailToken(token);
+      //req.body.wallet_id == walletid;  
+      const response = {
+          token : token,
+          status : "created"
+      }
+      return res.status(200).json(response);
+    } catch (error) {
+      console.error('createEmailToken', error.message);
+      return res.status(error.status).json(error.message);
+    }
+  };
+
   exports.sendVerification = async (req, res) => {
     try {
      //let testAccount = await nodemailer.createTestAccount();
@@ -117,16 +153,17 @@ exports.generateUniqueId = function(length){
           pass: config.SMTP_PW, // generated ethereal password
         },
       });
-      const AUTH_URL = `localhost:8000/axkledger/v1/api/users/verify`;//http://102.133.149.187/backend/users/verify
-      const link = `${AUTH_URL}/${token}`;
-      console.log(link);
+      const AUTH_URL = `localhost:9000/axkledger/v1/api/users/verify`;//http://102.133.149.187/backend/users/verify
+      const auth_link = `${req.protocol}://${req.get('host')}${req.originalUrl}/verify/:${token}`;
+      const link = `${AUTH_URL}/:${token}`;
+      console.log(auth_link +" : " + link);
       // send mail with defined transport object
       let info = await transporter.sendMail({
         from: `${config.FROM_NAME}👻 <${config.FROM_EMAIL}>`,//'"Verification 👻" <no-reply@doeremi.com>', // sender address
         to: email, //"nostrakelvin@gmail.com" // list of receivers
         subject: "Please Verify Your Afrikabal Account ✔", // Subject line
         text: "Hello" + user , // plain text body
-        html: "Hello" + user +",<br> You've successfully created and afrikabal account from this email.<br><a href="+link+">Click here to verify your email</a>", // html body
+        html: "Hello" + user +",<br> You've successfully created an afrikabal account from this email.<br><a href="+link+">Click here to verify your email</a>", // html body
       });
       console.log("Message sent: %s", info.messageId);
       // Message sent: <b658f8ca-6296-ccf4-8306-87d57a0b4321@example.com>
@@ -166,7 +203,7 @@ exports.generateUniqueId = function(length){
         },
       });
       const AUTH_URL = `localhost:8000/axkledger/v1/api/users/forgot_password`;//http://102.133.149.187/backend/users/forgot_password
-      const link = `${AUTH_URL}/${token.token}`;
+      const link = `${AUTH_URL}/:${token.token}`;
       console.log(link);
       // send mail with defined transport object
       let info = await transporter.sendMail({
@@ -174,7 +211,7 @@ exports.generateUniqueId = function(length){
         to: req.body.email, //"nostrakelvin@gmail.com" // list of receivers
         subject: "Please Reset Your Password For Afrikabal Account ✔", // Subject line
         text: "Hello " + token.user , // plain text body
-        html: "Hello " + token.user +",<br> Please Click on the link to reset your doeremi account password.<br><a href="+link+">Click here to reset your password</a>", // html body
+        html: "Hello " + token.user +",<br> Please Click on the link to reset your afrikabal account password.<br><a href="+link+">Click here to reset your password</a>", // html body
       });
       console.log("Message sent: %s", info.messageId);
       // Message sent: <b658f8ca-6296-ccf4-8306-87d57a0b4321@example.com>
@@ -234,6 +271,9 @@ exports.generateUniqueId = function(length){
     try {
       var data = {}, token = {}; 
       const response = await users.verifyEmailToken(req.params.token);
+      if (response.message == "error" || response.valid == false || response.message == "expired"){
+        return res.status(403).json({ msg: "token invalid or expired" });
+      }
       token.token = response.token;
       data.email = response.email;
       token.email = response.email;
@@ -251,6 +291,9 @@ exports.generateUniqueId = function(length){
   exports.verifyResetToken = async(req, res) => {
     try {
       const response = await users.verifyEmailToken(req.params.token);
+      if (response.message == "error" || response.valid == false || response.message == "expired"){
+        return res.status(403).json({ msg: "token invalid or expired" });
+      }
       let data = {
         email: response.email,
         token : response.token
@@ -373,6 +416,7 @@ exports.generateUniqueId = function(length){
       return res.status(err.status).send('Internal server error get user pending transactions');
     }
   };
+
 
 
 

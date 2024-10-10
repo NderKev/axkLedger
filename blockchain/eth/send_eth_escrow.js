@@ -414,6 +414,7 @@ const balanceUsdtToken = async(req, res) => {
      const usdt_bal = await USDTContract.methods.balanceOf(data.from).call;
      let bal_usdt = Number(usdt_bal.toString());
      bal_usdt = bal_usdt * ten6;
+     
     return res.send({balance: bal_usdt}); //successResponse(200, bal_axk, 'balance'); 
   } catch (error) {
   console.error('error -> ', logStruct('balanceUsdtToken', error))

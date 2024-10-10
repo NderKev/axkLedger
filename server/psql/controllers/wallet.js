@@ -13,12 +13,8 @@ exports.createWallet = async (req, res) => {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { wallet_id, mnemonic, passphrase, wif, address, xpub, xpriv} = req.body;
-    try {
-        const userExists = await users.checkUserExists(wallet_id);
-        if (!userExists && !userExists.length) {
-          return res.status(403).json({ msg : 'user doesnt exist' });
-        }
+    const {mnemonic, passphrase, wif, address, xpub, xpriv} = req.body;
+    try { 
         const usr = req.user, adm = req.admin;
         let walletid;
         if (usr){
@@ -27,19 +23,20 @@ exports.createWallet = async (req, res) => {
         else {
           walletid = adm.wallet_id
         }
-        if (wallet_id !== walletid) {
-          return res.status(403).json({ msg : 'user wallet id mismatch' });
+        const userExists = await users.checkUserExists(walletid);
+        if (!userExists && !userExists.length) {
+          return res.status(403).json({ msg : 'user doesnt exist' });
         }
-        const walletExists = await wallet.checkWallet(wallet_id);
+        const walletExists = await wallet.checkWallet(walletid);
         if (walletExists && walletExists.length) {
             return res.status(403).json({ msg : 'walletExists' });
           }
         //const salt = await bcrypt.genSalt(10);
         //let _passphrase = await bcrypt.hash(passphrase, salt);
-        await wallet.createWallet({wallet_id : wallet_id, mnemonic : mnemonic, passphrase : passphrase});
-        await wallet.createBTC({wallet_id : wallet_id, wif : wif, address : address, xpub : xpub, xpriv :xpriv});
-        await wallet.createWif({wallet_id : wallet_id, wif : wif, address : address});
-        return res.json({wallet_id : wallet_id, btc : address, msg : 'crypto and btc wallet created'});
+        await wallet.createWallet({wallet_id : walletid, mnemonic : mnemonic, passphrase : passphrase});
+        await wallet.createBTC({wallet_id : walletid, wif : wif, address : address, xpub : xpub, xpriv :xpriv});
+        await wallet.createWif({wallet_id : walletid, wif : wif, address : address});
+        return res.json({wallet_id : walletid, btc : address, msg : 'crypto and btc wallet created'});
     }catch (error) {
         console.error(error.message);
         return res.status(500).json({ msg: 'Internal server error create wallet' });
@@ -57,13 +54,9 @@ exports.createEVM = async (req, res) => {
     if (!validAddress || validAddress === 'null'|| typeof validAddress === 'undefined'){
      return res.status(401).json({ msg: 'Invalid address!' });
     } 
-    const { wallet_id, address, index} = req.body;
+    const { address, index} = req.body;
     
-    try {
-        const userExists = await users.checkUserExists(wallet_id);
-        if (!userExists && !userExists.length) {
-          return res.status(403).json({ msg : 'user doesnt exist' });
-        }
+    try {  
         const usr = req.user, adm = req.admin;
         let walletid;
         if (usr){
@@ -72,20 +65,21 @@ exports.createEVM = async (req, res) => {
         else {
           walletid = adm.wallet_id
         }
-        if (wallet_id !== walletid) {
-          return res.status(403).json({ msg : 'user wallet id mismatch' });
+        const userExists = await users.checkUserExists(walletid);
+        if (!userExists && !userExists.length) {
+          return res.status(403).json({ msg : 'user doesnt exist' });
         }
-        const walletExists = await wallet.checkWallet(wallet_id);
+        const walletExists = await wallet.checkWallet(walletid);
         if (!walletExists && !walletExists.length) {
             return res.status(403).json({ msg : 'walletNotExists' });
           }
-        const evmExists = await wallet.checkEVM({wallet_id : wallet_id, address : address});
+        const evmExists = await wallet.checkEVM({wallet_id : walletid, address : address});
         if (evmExists && evmExists.length) {
             return res.status(403).json({ msg : 'evmExists' });
           }
         
-        await wallet.createEVM({wallet_id : wallet_id, address : address, index : index});
-        return res.json({wallet_id : wallet_id, evm : address, msg : 'evm wallet created'});
+        await wallet.createEVM({wallet_id : walletid, address : address, index : index});
+        return res.json({wallet_id : walletid, evm : address, msg : 'evm wallet created'});
     }catch (error) {
         console.error(error.message);
         return res.status(500).json({ msg: 'Internal server error create evm wallet' });
@@ -99,12 +93,8 @@ exports.createXRP = async (req, res) => {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { wallet_id, pubKey, privKey, index, address, balance} = req.body;
-    try {
-        const userExists = await users.checkUserExists(wallet_id);
-        if (!userExists && !userExists.length) {
-          return res.status(403).json({ msg : 'user doesnt exist' });
-        }
+    const {pubKey, privKey, index, address, balance} = req.body;
+    try {  
         const usr = req.user, adm = req.admin;
         let walletid;
         if (usr){
@@ -113,19 +103,20 @@ exports.createXRP = async (req, res) => {
         else {
           walletid = adm.wallet_id
         }
-        if (wallet_id !== walletid) {
-          return res.status(403).json({ msg : 'user wallet id mismatch' });
+        const userExists = await users.checkUserExists(walletid);
+        if (!userExists && !userExists.length) {
+          return res.status(403).json({ msg : 'user doesnt exist' });
         }
-        const walletExists = await wallet.checkWallet(wallet_id);
+        const walletExists = await wallet.checkWallet(walletid);
         if (!walletExists && !walletExists.length) {
             return res.status(403).json({ msg : 'walletNotExists' });
           }
-        const xrpExists = await wallet.checkXRP({wallet_id : wallet_id, address : address});
+        const xrpExists = await wallet.checkXRP({wallet_id : walletid, address : address});
         if (xrpExists && xrpExists.length) {
             return res.status(403).json({ msg : 'xrpExists' });
           }
-        await wallet.createXRP({wallet_id : wallet_id, pubKey : pubKey, privKey : privKey, index : index,  address : address, balance : balance });
-        return res.json({wallet_id : wallet_id, xrp : address, msg : 'xrp wallet created'});
+        await wallet.createXRP({wallet_id : walletid, pubKey : pubKey, privKey : privKey, index : index,  address : address, balance : balance });
+        return res.json({wallet_id : walletid, xrp : address, msg : 'xrp wallet created'});
     }catch (error) {
         console.error(error.message);
         return res.status(500).json({ msg: 'Internal server error create xrp wallet' });
@@ -139,12 +130,9 @@ exports.createWif = async (req, res) => {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { wallet_id, wif, address, index} = req.body;
+    const { wif, address, index} = req.body;
     try {
-        const userExists = await users.checkUserExists(wallet_id);
-        if (!userExists && !userExists.length) {
-          return res.status(403).json({ msg : 'user doesnt exist' });
-        }
+       
         const usr = req.user, adm = req.admin;
         let walletid;
         if (usr){
@@ -153,10 +141,11 @@ exports.createWif = async (req, res) => {
         else {
           walletid = adm.wallet_id
         }
-        if (wallet_id !== walletid) {
-          return res.status(403).json({ msg : 'user wallet id mismatch' });
+        const userExists = await users.checkUserExists(walletid);
+        if (!userExists && !userExists.length) {
+          return res.status(403).json({ msg : 'user doesnt exist' });
         }
-        const walletExists = await wallet.checkWallet(wallet_id);
+        const walletExists = await wallet.checkWallet(walletid);
         if (!walletExists && !walletExists.length) {
             return res.status(403).json({ msg : 'walletNotExists' });
           }
@@ -165,8 +154,8 @@ exports.createWif = async (req, res) => {
             return res.status(403).json({ msg : 'wifExists' });
           }
         
-        await wallet.createWif({wallet_id : wallet_id, wif : wif, address : address, index : index });
-        return res.json({wallet_id : wallet_id, address : address, msg : 'wif wallet created'});
+        await wallet.createWif({wallet_id : walletid, wif : wif, address : address, index : index });
+        return res.json({wallet_id : walletid, address : address, msg : 'wif wallet created'});
     }catch (error) {
         console.error(error.message);
         return res.status(500).json({ msg: 'Internal server error create wif' });
@@ -180,12 +169,8 @@ exports.cryptoBalance = async (req, res) => {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { wallet_id, crypto, address, balance} = req.body;
-    try {
-        const userExists = await users.checkUserExists(wallet_id);
-        if (!userExists && !userExists.length) {
-          return res.status(403).json({ msg : 'user doesnt exist' });
-        }
+    const {crypto, address, balance} = req.body;
+    try { 
         const usr = req.user, adm = req.admin;
         let walletid;
         if (usr){
@@ -194,24 +179,63 @@ exports.cryptoBalance = async (req, res) => {
         else {
           walletid = adm.wallet_id
         }
-        if (wallet_id !== walletid) {
-          return res.status(403).json({ msg : 'user wallet id mismatch' });
+        const userExists = await users.checkUserExists(walletid);
+        if (!userExists && !userExists.length) {
+          return res.status(403).json({ msg : 'user doesnt exist' });
         }
-        const walletExists = await wallet.checkWallet(wallet_id);
+        const walletExists = await wallet.checkWallet(walletid);
         if (!walletExists && !walletExists.length) {
             return res.status(403).json({ msg : 'walletNotExists' });
           }
-        const balExists = await wallet.checkBalance({wallet_id : wallet_id, crypto : crypto, address : address});
+        const balExists = await wallet.checkBalance({wallet_id : walletid, crypto : crypto, address : address});
         if (balExists && balExists.length) {
             return res.status(403).json({ msg : 'balanceExists' });
           }
         
-        await wallet.cryptoBalance({wallet_id : wallet_id, crypto : crypto, address : address, balance : balance });
-        return res.json({wallet_id : wallet_id, crypto : crypto, balance : balance, msg : ' wallet balance created'});
+        await wallet.cryptoBalance({wallet_id : walletid, crypto : crypto, address : address, balance : balance });
+        return res.json({wallet_id : walletid, crypto : crypto, balance : balance, msg : ' wallet balance created'});
     }catch (error) {
         console.error(error.message);
         return res.status(500).json({ msg: 'Internal server error crypto balance' });
     }
+}
+
+exports.evmBalance = async (req, res) => {
+  const errors = validationResult(req);
+
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  const {crypto, address, balance} = req.body;
+  try { 
+      const usr = req.user, adm = req.admin;
+      let walletid;
+      if (usr){
+        walletid = usr.wallet_id;
+      }
+      else {
+        walletid = adm.wallet_id
+      }
+      const userExists = await users.checkUserExists(walletid);
+      if (!userExists && !userExists.length) {
+        return res.status(403).json({ msg : 'user doesnt exist' });
+      }
+      const walletExists = await wallet.checkWallet(walletid);
+      if (!walletExists && !walletExists.length) {
+          return res.status(403).json({ msg : 'walletNotExists' });
+        }
+      const balExists = await wallet.checkEvmBalance({wallet_id : walletid, crypto : crypto, address : address});
+      if (balExists && balExists.length) {
+          return res.status(403).json({ msg : 'balanceExists' });
+        }
+      
+      await wallet.evmBalance({wallet_id : walletid, crypto : crypto, name : data.name, address : address, balance : balance });
+      return res.json({wallet_id : walletid, crypto : crypto, balance : balance, msg : ' evm wallet balance created'});
+  }catch (error) {
+      console.error(error.message);
+      return res.status(500).json({ msg: 'Internal server error crypto balance' });
+  }
 }
 
 exports.updateWalletPassphrase = async (req, res) => {
@@ -221,34 +245,35 @@ exports.updateWalletPassphrase = async (req, res) => {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { wallet_id, passphrase} = req.body;
-  try {
-      const userExists = await users.checkUserExists(wallet_id);
+  //const {passphrase} = req.body;
+  try {     
+      const usr = req.user, adm = req.admin;
+      let walletid, user, passphrase;
+      if (usr){
+        walletid = usr.wallet_id;
+        user = usr.user;
+        passphrase = req.body.passphrase;
+      }
+      else {
+        walletid = adm.wallet_id;
+        user = adm.user;
+        passphrase = req.body.pin;
+      }
+      const userExists = await users.checkUserExists(walletid);
       if (!userExists && !userExists.length) {
         return res.status(403).json({ msg : 'user doesnt exist' });
       }
-      const usr = req.user, adm = req.admin;
-      let walletid;
-      if (usr){
-        walletid = usr.wallet_id;
-      }
-      else {
-        walletid = adm.wallet_id
-      }
-      if (wallet_id !== walletid) {
-        return res.status(403).json({ msg : 'user wallet id mismatch' });
-      }
-      const walletExists = await wallet.checkWallet(wallet_id);
+      const walletExists = await wallet.checkWallet(walletid);
       if (!walletExists && !walletExists.length) {
           return res.status(403).json({ msg : 'walletNotExists' });
         }
-      console.log("username" + req.user.user);
-      let str = passphrase + req.user.user;
+      console.log("username" + user);
+      let str = passphrase + user;
       let saltRounds = 10;
       let _passphrase = bcrypt.hashSync(String(str), saltRounds);
       
-      await wallet.updateWalletPassphrase({wallet_id : wallet_id, passphrase : _passphrase });
-      return res.json({wallet_id : wallet_id, msg : 'crypto wallet passphrase updated'});
+      await wallet.updateWalletPassphrase({wallet_id : walletid, passphrase : _passphrase });
+      return res.json({wallet_id : walletid, msg : 'crypto wallet passphrase updated'});
   }catch (error) {
       console.error(error.message);
       return res.status(500).json({ msg: 'Internal server error update wallet passphrase' });
@@ -262,12 +287,8 @@ exports.updateBalance = async (req, res) => {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { wallet_id, crypto, address, balance, usd} = req.body;
-    try {
-        const userExists = await users.checkUserExists(wallet_id);
-        if (!userExists && !userExists.length) {
-          return res.status(403).json({ msg : 'user doesnt exist' });
-        }
+    const {crypto, address, balance, usd} = req.body;
+    try {   
         const usr = req.user, adm = req.admin;
         let walletid;
         if (usr){
@@ -276,24 +297,63 @@ exports.updateBalance = async (req, res) => {
         else {
           walletid = adm.wallet_id
         }
-        if (wallet_id !== walletid) {
-          return res.status(403).json({ msg : 'user wallet id mismatch' });
+        const userExists = await users.checkUserExists(walletid);
+        if (!userExists && !userExists.length) {
+          return res.status(403).json({ msg : 'user doesnt exist' });
         }
-        const walletExists = await wallet.checkWallet(wallet_id);
+        const walletExists = await wallet.checkWallet(walletid);
         if (!walletExists && !walletExists.length) {
             return res.status(403).json({ msg : 'walletNotExists' });
           }
-        const balExists = await wallet.checkBalance({wallet_id : wallet_id, crypto : crypto, address : address});
+        const balExists = await wallet.checkBalance({wallet_id : walletid, crypto : crypto, address : address});
         if (!balExists && !balExists.length) {
             return res.status(403).json({ msg : 'balanceNotExists' });
           }
         
-        await wallet.updateBalance({wallet_id : wallet_id, crypto : crypto, address : address, balance : balance, usd :usd });
-        return res.json({wallet_id : wallet_id, crypto : crypto, balance : balance, msg : ' wallet balance updated'});
+        await wallet.updateBalance({wallet_id : walletid, crypto : crypto, address : address, balance : balance, usd :usd });
+        return res.json({wallet_id : walletid, crypto : crypto, balance : balance, msg : ' wallet balance updated'});
     }catch (error) {
         console.error(error.message);
         return res.status(500).json({ msg: 'Internal server error update balance' });
     }
+}
+
+exports.updateEvmBalance = async (req, res) => {
+  const errors = validationResult(req);
+
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  const {crypto, address, balance, usd} = req.body;
+  try {   
+      const usr = req.user, adm = req.admin;
+      let walletid;
+      if (usr){
+        walletid = usr.wallet_id;
+      }
+      else {
+        walletid = adm.wallet_id
+      }
+      const userExists = await users.checkUserExists(walletid);
+      if (!userExists && !userExists.length) {
+        return res.status(403).json({ msg : 'user doesnt exist' });
+      }
+      const walletExists = await wallet.checkWallet(walletid);
+      if (!walletExists && !walletExists.length) {
+          return res.status(403).json({ msg : 'walletNotExists' });
+        }
+      const balExists = await wallet.checkEvmBalance({wallet_id : walletid, crypto : crypto, address : address});
+      if (!balExists && !balExists.length) {
+          return res.status(403).json({ msg : 'balanceNotExists' });
+        }
+      
+      await wallet.updateEvmBalance({wallet_id : walletid, crypto : crypto, address : address, balance : balance, usd :usd });
+      return res.json({wallet_id : walletid, crypto : crypto, balance : balance, msg : ' evm wallet balance updated'});
+  }catch (error) {
+      console.error(error.message);
+      return res.status(500).json({ msg: 'Internal server error update evm balance' });
+  }
 }
 
 exports.updateBTC = async (req, res) => {
@@ -303,12 +363,8 @@ exports.updateBTC = async (req, res) => {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { wallet_id, wif, address, index} = req.body;
-    try {
-        const userExists = await users.checkUserExists(wallet_id);
-        if (!userExists && !userExists.length) {
-          return res.status(403).json({ msg : 'user doesnt exist' });
-        }
+    const {wif, address, index} = req.body;
+    try {     
         const usr = req.user, adm = req.admin;
         let walletid;
         if (usr){
@@ -317,20 +373,21 @@ exports.updateBTC = async (req, res) => {
         else {
           walletid = adm.wallet_id
         }
-        if (wallet_id !== walletid) {
-          return res.status(403).json({ msg : 'user wallet id mismatch' });
+        const userExists = await users.checkUserExists(walletid);
+        if (!userExists && !userExists.length) {
+          return res.status(403).json({ msg : 'user doesnt exist' });
         }
-        const walletExists = await wallet.checkWallet(wallet_id);
+        const walletExists = await wallet.checkWallet(walletid);
         if (!walletExists && !walletExists.length) {
             return res.status(403).json({ msg : 'walletNotExists' });
           }
-        const btcExists = await wallet.checkBTC(wallet_id);
+        const btcExists = await wallet.checkBTC(walletid);
         if (!btcExists && !btcExists.length) {
             return res.status(403).json({ msg : 'btcNotExists' });
           }
         
-        await wallet.updateBTC({wallet_id : wallet_id, wif : wif, address : address, index : index });
-        return res.json({wallet_id : wallet_id, address : address, msg : 'btc wallet updated'});
+        await wallet.updateBTC({wallet_id : walletid, wif : wif, address : address, index : index });
+        return res.json({wallet_id : walletid, address : address, msg : 'btc wallet updated'});
     }catch (error) {
         console.error(error.message);
         return res.status(500).json({ msg: 'Internal server error update btc' });
@@ -339,13 +396,18 @@ exports.updateBTC = async (req, res) => {
 
 exports.updateEVMIndex = async (req, res) => {
     try {
-      let {wallet_id, address, index } = req.body;
+      const usr = req.user, adm = req.admin;
+      let wallet_id;
+      if (usr){
+        wallet_id = usr.wallet_id;
+      }
+      else {
+        wallet_id = adm.wallet_id
+      }
+      let { address, index } = req.body;
       const isExists = await wallet.isEVM(wallet_id);
       if (!isExists && !isExists.length) {
           return res.status(403).json({ msg : 'evmIndexNotExists' });
-        }
-      if (wallet_id !== req.user.wallet_id) {
-          return res.status(403).json({ msg : 'user wallet id mismatch' });
         }
       const idx = await wallet.updateEVMIndex({wallet_id : wallet_id, address : address, index : index});
       return res.status(200).json(idx);
@@ -357,19 +419,47 @@ exports.updateEVMIndex = async (req, res) => {
 
 exports.getBalance = async (req, res) => {
     try {
-      const {wallet_id, crypto, address} = req.body;
+      const usr = req.user, adm = req.admin;
+      let wallet_id;
+      if (usr){
+        wallet_id = usr.wallet_id;
+      }
+      else {
+        wallet_id = adm.wallet_id
+      }
+      const {crypto, address} = req.body;
       const balExists = await wallet.checkBalance({wallet_id : wallet_id, crypto : crypto, address : address});
       if (!balExists && !balExists.length) {
           return res.status(403).json({ msg : 'balanceNotExists' });
-        }
-      if (wallet_id !== req.user.wallet_id) {
-          return res.status(403).json({ msg : 'user wallet id mismatch' });
         }
       const balance = await wallet.getBalance({wallet_id : wallet_id, crypto : crypto, address : address});
       return res.status(200).json(balance);
     } catch (err) {
       console.error(err.message);
       return res.status(500).send('Internal server error get balance');
+    }
+  }; 
+
+  exports.getEvmBalance = async (req, res) => {
+    try {
+      const usr = req.user, adm = req.admin;
+      let wallet_id;
+      if (usr){
+        wallet_id = usr.wallet_id;
+      }
+      else {
+        wallet_id = adm.wallet_id
+      }
+      const {crypto, address} = req.body;
+      const balExists = await wallet.checkEvmBalance({wallet_id : wallet_id, crypto : crypto, address : address});
+      if (!balExists && !balExists.length) {
+          return res.status(403).json({ msg : 'balanceNotExists' });
+        }
+      const balance = await wallet.getEvmBalance({wallet_id : wallet_id, crypto : crypto, address : address});
+      return res.status(200).json(balance);
+    } catch (err) {
+      console.error(err.message);
+      return res.status(500).send('Internal server error get evm balance');
     }
   }; 
 

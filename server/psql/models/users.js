@@ -433,6 +433,24 @@ exports.getCurrentTokenUser = async (data) => {
   return query;
 };
 
+exports.getActiveEmailToken = async (email) => {
+  const query = db.read.select('axk_email_token.email', 'axk_email_token.token', 'axk_email_token.expiry')
+  .from('axk_email_token')
+  .where('email', '=', email)
+  .where('used' , '=', 0);
+  console.info("query -->", query.toQuery())
+  return query;
+}; 
+
+exports.getUsedEmailToken = async (email) => {
+  const query = db.read.select('axk_email_token.email', 'axk_email_token.token', 'axk_email_token.expiry')
+  .from('axk_email_token')
+  .where('email', '=', email)
+  .where('used' , '=', 1);
+  console.info("query -->", query.toQuery())
+  return query;
+}; 
+
 exports.createEmailToken = async (data) => {
   const createdAt = moment().format('YYYY-MM-DD HH:mm:ss');
   const query = db.write('axk_email_token').insert({
@@ -757,7 +775,7 @@ exports.genVerToken = async (reqData) => {
      //console.log(tkExp);
      token.wallet_id = userExists[0].wallet_id;
      token.email = userExists[0].email;
-     token.expiration = tkExp.data.exp;
+     token.expiry = tkExp.data.exp;
      token.token = tkn.token;
      token.user = userExists[0].name;
      //console.log(token);

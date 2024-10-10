@@ -96,6 +96,14 @@ router.post(
   userController.sendVerification,
 );
 
+router.get(
+  '/verify',
+  [
+    check('x-auth-token', 'token is required').isJWT().not().isEmpty()
+  ],
+  validateToken,
+  userController.createEmailToken,
+);
 
 router.get(
   '/verify/:token',

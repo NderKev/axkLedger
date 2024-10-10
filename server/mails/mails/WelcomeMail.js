@@ -8,7 +8,7 @@ ${ContentBlock(
     'Welcome to axkledger and thank you for registering to our service!',
   )}`,
 )}
-${Button('Access now!', link)}
+${Button('Verify now!', link)}
 ${ContentBlock(`${Text('Enjoy selling and tracking agricultural products on our platform!')}`)}
 `;
 

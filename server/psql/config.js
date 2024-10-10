@@ -7,10 +7,18 @@ if (process.env.NODE_ENV !== 'production') {
   dotenv.config({ path: './local.env'});
 }
 
+if (process.env.NODE_ENV === 'production') {
+  dotenv.config({ path: './production.env'});
+}
+
 module.exports = {
   PORT: process.env.PORT || 8000,
   JWT_SECRET: process.env.JWT_SECRET,
   ADM_SECRET: process.env.ADM_SECRET,
+  ADMIN_EMAIL: process.env.ADMIN_EMAIL,
+  ADMIN_NAME: process.env.ADMIN_NAME,
+  ADMIN_WID: process.env.ADMIN_WID,
+  ADMIN_PW: process.env.ADMIN_PW,
   FRM_SECRET: process.env.FRM_SECRET,
   DB_HOST: process.env.DB_HOST,
   DB_PORT: process.env.DB_PORT,
