@@ -272,4 +272,30 @@ exports.createAdminUser = async (req, res) => {
   };
 
 
+  exports.deleteUser = async (req, res) => {
+    try {
+      const email  = req.body.email;
+      console.log(email);
+      const fetchUser = await users.fetchUser(req.admin.user);
+      const user = await users.deleteUser(email);
+      return res.status(200).json(user);
+    } catch (err) {
+      console.error(err.message);
+      return res.status(500).send('Internal server error delete user');
+    }
+  };
+
+
+  exports.deleteFarmer = async (req, res) => {
+    try {
+      const wallet_id  = req.body.wallet_id;
+      console.log(wallet_id);
+      const user = await farmer.deleteFarmer(wallet_id);
+      return res.status(200).json(user);
+    } catch (err) {
+      console.error(err.message);
+      return res.status(500).send('Internal server error delete user');
+    }
+  };
+
   

@@ -61,6 +61,17 @@ exports.createUser = async (data) => {
   return query;
 };
 
+exports.deleteUser = async (email) => {
+  console.log("del to axk users", id)
+  const query = db.write('axk_users')
+  .from('axk_users')
+  .where('email', '=', email)
+  .del()
+  return query;
+};
+
+
+
 exports.updatePassword = async (data) => {
   const query = db.write('axk_users')
     .where('email', data.email)

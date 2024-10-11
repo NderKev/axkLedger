@@ -279,3 +279,13 @@ catch(err){
   return resp;
 }
 }
+
+
+exports.deleteFarmer = async (wallet_id) => {
+  console.log("del to axk farmers", id)
+  const query = db.write('axk_sc_farmers')
+  .from('axk_sc_farmers')
+  .where('wallet_id', '=', wallet_id)
+  .del()
+  return query;
+};

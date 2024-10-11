@@ -72,7 +72,7 @@ router.post(
     check('pin', 'Please include a passphrase').not().isEmpty()
   
   ],
-  valid,
+  validateAdmin,
   walletController.updateWalletPassphrase
 );
 
