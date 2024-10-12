@@ -62,7 +62,7 @@ exports.createUser = async (data) => {
 };
 
 exports.deleteUser = async (email) => {
-  console.log("del to axk users", id)
+  console.log("del to axk users", email)
   const query = db.write('axk_users')
   .from('axk_users')
   .where('email', '=', email)
