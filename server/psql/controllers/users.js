@@ -36,6 +36,8 @@ exports.generateUniqueId = function(length){
     console.log(name);
     const wallet_id  = this.generateUniqueId(32);
     console.log(wallet_id);
+    const otp = this.generateOTP(6);
+    console.log("otp  :" + otp);
     try {
       const userExists = await users.checkUserExists(email);
       if (userExists && userExists.length) {
@@ -57,9 +59,6 @@ exports.generateUniqueId = function(length){
       await users.createUserToken(token);
       const email_ver_token = await users.genVerToken(input.email);
       //await users.createEmailToken(email_ver_token);
-      const otp = this.generateOTP(6);
-      console.log("otp  :" + otp);
-
       await users.createEmailToken({email : email_ver_token.email, expiry : email_ver_token.expiry, token : otp});
       email_ver_token.token = otp;
      // const link = `${req.protocol}://${req.get('host')}${req.originalUrl}/verify/${email_ver_token.token}`;
