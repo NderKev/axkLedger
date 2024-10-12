@@ -319,7 +319,7 @@ const logStruct = (func, error) => {
 
       return res.status(respBal.status).send(respBal.data)
     });
-
+  
 
     router.get('/admin', [
       check('x-admin-token', 'User token is required').isJWT().not().isEmpty()
@@ -338,7 +338,26 @@ const logStruct = (func, error) => {
       return res.status(response.status).send(response)
     });
 
-  
+    const convertUSDToEth = async(amount) => {
+      let getPrice = await checkEthPriceUSD();
+      let eth_prc = getPrice.data;
+      console.log(eth_prc);
+      eth_prc = eth_prc[0];
+      console.log(eth_prc);
+      eth_prc = eth_prc.replace("USD: ",'');
+      console.log(eth_prc);
+      let usd_amount = parseFloat(amount);
+      let eth_amount = usd_amount/eth_prc;
+      eth_amount = eth_amount.toFixed(4);
+      return eth_amount;
+    }
+    
+    router.get('/rate', [
+      check('amount', 'Usd amount is required').isNumeric().not().isEmpty()
+    ], async(req, res, next) => {
+      const rate = await convertUSDToEth(req.body.amount);
+      return res.status(200).json({rate : rate});
+    });
 
 
     module.exports = router;

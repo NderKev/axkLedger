@@ -62,9 +62,10 @@ exports.generateUniqueId = function(length){
       email_ver_token.token = otp;
      // const link = `${req.protocol}://${req.get('host')}${req.originalUrl}/verify/${email_ver_token.token}`;
       //const bd_link = `http://102.133.149.187/backend/users/verify/${email_ver_token.token}`
+      const link = `http://102.133.149.187/backend/users/otp/${otp}`;
       console.log("otp  :" + otp);
        try {
-        await sendEmail(email, WelcomeMail(name, otp));
+        await sendEmail(email, WelcomeMail(name, link, otp));
       } catch (error) {
         console.log(error);
       } 
@@ -471,7 +472,7 @@ exports.generateUniqueId = function(length){
   exports.verifyOTP = async(req, res) => {
     try {
       var data = {}, token = {}; 
-      const response = await users.getOtpToken(req.body.otp);
+      const response = await users.getOtpToken(req.params.otp);
       var time_now = Math.floor(Date.now() / 1000);
       const user_wid = await users.getUserDetailsByEmail(response[0].email);
       if (response.length <= 0 || user_wid.length <= 0  || response[0].expiry < time_now){
