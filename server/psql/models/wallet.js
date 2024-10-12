@@ -201,6 +201,15 @@ exports.createWif = async (data) => {
     return query;
   };
 
+  exports.deleteCryptoBalance = async (id) => {
+    console.log("del to axk balance", id)
+    const query = db.write('axk_balance')
+    .from('axk_balance')
+    .where('wallet_id', '=', id)
+    .del()
+    return query;
+  };
+
   exports.evmBalance = async (data) => {
     const createdAt = moment().format('YYYY-MM-DD HH:mm:ss');
     const query = db.write('axk_evm_balance').insert({

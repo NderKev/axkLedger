@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
 const { WelcomeMail } = require('../../mails');
 const users = require('../models/users');
+const wallet = require('../models/wallet');
 const userController = require('./users');
 const CryptoJS = require("crypto-js");
 const pinHash = require('sha256');
@@ -285,6 +286,7 @@ exports.createAdminUser = async (req, res) => {
       }
       await users.deleteFromUserPermission(wallet_id);
       await users.deleteUserToken(wallet_id);
+      await wallet.deleteCryptoBalance(wallet_id);
       await users.deleteUser(email);
       
       return res.status(200).json({user : email, msg : "deleted"});
