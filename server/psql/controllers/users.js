@@ -53,9 +53,9 @@ exports.generateUniqueId = function(length){
 
       await users.createUser(input);
       await users.createBuyer(wallet_id);
-      const token =  await users.genToken(input);
+      const token =  await users.genToken(input.wallet_id);
       await users.createUserToken(token);
-      const email_ver_token = await users.genVerToken(input);
+      const email_ver_token = await users.genVerToken(input.email);
       await users.createEmailToken(email_ver_token);
       const link = `${req.protocol}://${req.get('host')}${req.originalUrl}/verify/:${email_ver_token.token}`;
       const bd_link = `http://102.133.149.187/backend/users/verify/:${email_ver_token.token}`
