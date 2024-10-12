@@ -147,7 +147,7 @@ const wallet =  await createBTCTest(req, res);
 return res.status(wallet.status).send(wallet.data);
 });
 
-router.post('/testnet/admin', validateToken, validateAdmin, [
+router.post('/testnet/admin', validateAdmin, [
   check('pin', 'Please include a pin').isNumeric().not().isEmpty()
 ], async(req, res, next) => {
 

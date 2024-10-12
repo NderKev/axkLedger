@@ -119,7 +119,7 @@ const logStruct = (func, error) => {
         return res.status(wallet.status).send(wallet.data);
     });
 
-    router.post('/create/admin', validateToken, validateAdmin, [
+    router.post('/create/admin',  validateAdmin, [
       check('wallet_id', 'Wallet id is required').not().isEmpty(),
       check('pin', 'Please include a pin').isNumeric().not().isEmpty()
     ],  async(req, res, next) => {
@@ -225,7 +225,7 @@ const logStruct = (func, error) => {
       }
       }
 
-    router.post('/create/farmer', validateToken, validateAdmin, [
+    router.post('/create/farmer', validateAdmin, [
         check('name', 'farmer name is required').not().isEmpty(),
         check('location', 'Please include farmer location').not().isEmpty()
       ],  async(req, res, next) => {

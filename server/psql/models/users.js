@@ -462,6 +462,15 @@ exports.getUsedEmailToken = async (email) => {
   return query;
 }; 
 
+exports.getOtpToken = async (token) => {
+  const query = db.read.select('axk_email_token.email', 'axk_email_token.token', 'axk_email_token.expiry')
+  .from('axk_email_token')
+  .where('token', '=', token)
+  .where('used' , '=', 0);
+  console.info("query -->", query.toQuery())
+  return query;
+}; 
+
 exports.createEmailToken = async (data) => {
   const createdAt = moment().format('YYYY-MM-DD HH:mm:ss');
   const query = db.write('axk_email_token').insert({
