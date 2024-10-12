@@ -283,6 +283,15 @@ exports.getUserPermissions = async () => {
   return query;
 }; 
 
+exports.deleteFromUserPermission = async (id) => {
+  console.log("del to user permission", id)
+  const query = db.write('axk_user_permission')
+  .from('axk_user_permission')
+  .where('wallet_id', '=', id)
+  .del()
+  return query;
+};
+
 exports.createUserRole = async (data) => {
   const createdAt = moment().format('YYYY-MM-DD HH:mm:ss');
   const query = db.write('axk_user_role').insert({
