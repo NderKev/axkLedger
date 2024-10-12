@@ -284,8 +284,8 @@ exports.createAdminUser = async (req, res) => {
         return res.status(403).json({ msg : 'unauthorized delete admin' });
       }
 
-       await users.deleteUser(email);
-      await users.deleteUserToken(wallet_id);
+      await users.deleteUser(email);
+      //await users.deleteUserToken(wallet_id);
       return res.status(200).json({user : email, msg : "deleted"});
     } catch (err) {
       console.error(err.message);
