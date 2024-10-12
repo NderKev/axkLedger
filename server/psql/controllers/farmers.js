@@ -179,7 +179,7 @@ const pinHash = require('sha256');
     if (req.body.wallet_id !== req.farmer.wallet_id) {
       return res.status(403).json({ msg : 'farmer wallet id mismatch' });
     }
-    if (req.user || req.user.wallet_id) {
+    if (req.user ||  req.user.wallet_id) {
       return res.status(403).json({ msg : 'Unauthorized farmer request' });
     }
     const _pkey = await farmers.getFarmerDetailsByAddress(req.body.wallet_id);

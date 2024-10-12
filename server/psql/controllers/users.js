@@ -58,9 +58,10 @@ exports.generateUniqueId = function(length){
       const email_ver_token = await users.genVerToken(input);
       await users.createEmailToken(email_ver_token);
       const link = `${req.protocol}://${req.get('host')}${req.originalUrl}/verify/:${email_ver_token.token}`;
-      console.log("link  :" + link);
+      const bd_link = `http://102.133.149.187/backend/users/verify/:${email_ver_token.token}`
+      console.log("link  :" + link + bd_link);
        try {
-        await sendEmail(email, WelcomeMail(name, link));
+        await sendEmail(email, WelcomeMail(name, bd_link));
       } catch (error) {
         console.log(error);
       } 
@@ -153,7 +154,7 @@ exports.generateUniqueId = function(length){
           pass: config.SMTP_PW, // generated ethereal password
         },
       });
-      const AUTH_URL = `localhost:9000/axkledger/v1/api/users/verify`;//http://102.133.149.187/backend/users/verify
+      const AUTH_URL = `http://102.133.149.187/backend/users/verify`;//http://102.133.149.187/backend/users/verify//localhost:9000/axkledger/v1/api/users/verify
       const auth_link = `${req.protocol}://${req.get('host')}${req.originalUrl}/verify/:${token}`;
       const link = `${AUTH_URL}/:${token}`;
       console.log(auth_link +" : " + link);
@@ -162,10 +163,10 @@ exports.generateUniqueId = function(length){
         from: `${config.FROM_NAME}👻 <${config.FROM_EMAIL}>`,//'"Verification 👻" <no-reply@doeremi.com>', // sender address
         to: email, //"nostrakelvin@gmail.com" // list of receivers
         subject: "Please Verify Your Afrikabal Account ✔", // Subject line
-        text: "Hello" + user , // plain text body
-        html: "Hello" + user +",<br> You've successfully created an afrikabal account from this email.<br><a href="+link+">Click here to verify your email</a>", // html body
+        text: "Hello " + user , // plain text body
+        html: "Hello " + user +",<br> You've successfully created an afrikabal account from this email.<br><a href="+link+">Click here to verify your email</a>", // html body
       });
-      console.log("Message sent: %s", info.messageId);
+      console.log("Message sent: %s", info.messageId); 
       // Message sent: <b658f8ca-6296-ccf4-8306-87d57a0b4321@example.com>
   
       // Preview only available when sending through an Ethereal account

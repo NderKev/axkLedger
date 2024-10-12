@@ -110,6 +110,14 @@ router.post(
     refreshToken,
   );
 
+  router.post(
+    '/del/user',
+    [
+      check('email', 'email is required').isEmail().exists(),
+    ],   
+    validateAdmin,
+    adminController.deleteUser,
+  );
 
 
 module.exports = router;

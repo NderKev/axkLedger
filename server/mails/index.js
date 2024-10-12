@@ -1,6 +1,6 @@
 const MainLayout = require('./layout/MainLayout');
 const WelcomeMailContent = require('./mails/WelcomeMail');
-const TransactionMailContent = require('./mails/TransactionMail');
+const TransactionMailContent = require('./mails/TransactionEmail');
 const VerifyMailContent = require('./mails/VerifyEmail');
 const ResetPasswordEmailContent = require('./mails/ResetPasswordEmail');
 
@@ -19,6 +19,22 @@ const WelcomeMail = (username = '{{nickname}}', link) => ({
     )}`)(username, link),
 });
 
+const TransactionMail = (username, link, amount, crypto, address) => ({
+  id: 2,
+  name: '002 | Transaction Sent',
+  subject: 'Transaction sent from Wallet !',
+  text: ((username, amount, crypto, address) =>
+    `Hi ${username} Yout transaction of ${crypto} ${amount} has been sent to ${address}
+    `)(username, amount, crypto, address),
+  html: ((username, link, amount, crypto, address) =>
+    `${MainLayout(
+      'Transaction sent from your wallet',
+      username,
+      TransactionMailContent(link, amount, crypto, address),
+    )}`)(username, link, amount, crypto, address),
+});
+
 module.exports = {
   WelcomeMail,
+  TransactionMail
 };
