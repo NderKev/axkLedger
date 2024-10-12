@@ -53,15 +53,18 @@ exports.generateUniqueId = function(length){
 
       await users.createUser(input);
       await users.createBuyer(wallet_id);
-      const token =  await users.genToken(input);
+      const token =  await users.genToken(input.wallet_id);
       await users.createUserToken(token);
-      const email_ver_token = await users.genVerToken(input);
-      await users.createEmailToken(email_ver_token);
-      const link = `${req.protocol}://${req.get('host')}${req.originalUrl}/verify/:${email_ver_token.token}`;
-      const bd_link = `http://102.133.149.187/backend/users/verify/:${email_ver_token.token}`
-      console.log("link  :" + link + bd_link);
+      const email_ver_token = await users.genVerToken(input.email);
+      //await users.createEmailToken(email_ver_token);
+      const otp = generateOTP(6);
+      await users.createEmailToken({email : email_ver_token.email, expiry : email_ver_token.expiry, token : otp});
+      email_ver_token.token = otp;
+     // const link = `${req.protocol}://${req.get('host')}${req.originalUrl}/verify/${email_ver_token.token}`;
+      //const bd_link = `http://102.133.149.187/backend/users/verify/${email_ver_token.token}`
+      console.log("otp  :" + otp);
        try {
-        await sendEmail(email, WelcomeMail(name, bd_link));
+        await sendEmail(email, WelcomeMail(name, otp));
       } catch (error) {
         console.log(error);
       } 
@@ -278,6 +281,7 @@ exports.generateUniqueId = function(length){
       token.token = response.token;
       data.email = response.email;
       token.email = response.email;
+      data.wallet_id = response.wallet_id;
       data.verified = 1;
       token.used = 1;
       await users.verifyEmailTokenDb(token);
@@ -419,5 +423,71 @@ exports.generateUniqueId = function(length){
   };
 
 
+  const generateOTP = (length)=> {
+    const characters = '0123456789';
+    let lot_num = '';
+    for (let i = 0; i < length; i++) {
+        const randomIndex = Math.floor(Math.random() * characters.length);
+        lot_num += characters[randomIndex];
+    }
+    let date = moment().format('YYYY/MM/DD');
+    console.log(date);
+    return lot_num;
+  }
 
+  exports.createEmailOTP = async (req, res) => {
+    const errors = validationResult(req);
+  
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    //const { wallet_id, address, tx_hash, mode, value, fiat} = req.body;
+    try {
+      const usr = req.user, adm = req.admin;
+      let walletid;
+      if (usr){
+        walletid = usr.wallet_id;
+      }
+      else {
+        walletid = adm.wallet_id
+      }
+     const curr_user_email = await users.getDetailsByWalletId(walletid);
+     const token = await users.genVerToken(curr_user_email[0].email);
+     let otp = generateOTP(6);
+     token.token = otp;
+     await users.createEmailToken({email : curr_user_email[0].email, expiry : token.expiry, token : otp});
+      //req.body.wallet_id == walletid;  
+      const response = {
+          token : token,
+          status : "created"
+      }
+      return res.status(200).json(response);
+    } catch (error) {
+      console.error('createEmailOTP', error.message);
+      return res.status(error.status).json(error.message);
+    }
+  };
 
+  exports.verifyOTP = async(req, res) => {
+    try {
+      var data = {}, token = {}; 
+      const response = await users.getOtpToken(req.body.otp);
+      var time_now = Math.floor(Date.now() / 1000);
+      const user_wid = await users.getUserDetailsByEmail(response[0].email);
+      if (response.length <= 0 || user_wid.length <= 0  || response[0].expiry < time_now){
+        return res.status(403).json({ msg: "otp invalid or expired" });
+      }
+      token.token = response[0].token;
+      data.email = response[0].email;
+      token.email = response[0].email;
+      data.wallet_id = user_wid[0].wallet_id;
+      data.verified = 1;
+      token.used = 1;
+      await users.verifyEmailTokenDb(token);
+      await users.verifyEmail(data);
+      return res.status(202).json({ response, msg: 'verified'}); 
+  } catch (error) {
+      console.error(error.message);
+      return res.status(500).json({ msg: error.message });
+    }
+  };

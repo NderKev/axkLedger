@@ -156,7 +156,7 @@ router.post('/add/v2', [
   check('agents', 'Please include the agents array').isArray().not().isEmpty(),
   check('x-auth-token', 'Please include the authentication token').isJWT().not().isEmpty(),
   check('x-farmer-token', 'Please include the farmer token').isJWT().not().isEmpty(),
-], validateToken, validateAdmin, validateFarmer, async(req, res, next) => {
+], validateAdmin, validateFarmer, async(req, res, next) => {
   console.log(req.body);
   //const {to, amount} = req.body
   const product = await addFarmProduceV2(req, res);
@@ -216,7 +216,7 @@ router.post('/reg/product/v2',  [
   check('produce_type', 'Please include the produce type').not().isEmpty(),
   check('x-auth-token', 'Please include the authentication token').isJWT().not().isEmpty(),
   check('x-farmer-token', 'Please include the farmer token').isJWT().not().isEmpty(),
-] , validateToken, validateAdmin, validateFarmer, 
+] , validateAdmin, validateFarmer, 
 async(req, res, next) => {
   console.log(req.body);
   //const {to, amount} = req.body
@@ -266,7 +266,7 @@ router.post('/own/product/v2', [
   check('p_hash', 'Please include produce hash').not().isEmpty(),
   check('op_type', 'Please include the operation type').isInt().not().isEmpty(),
   check('x-auth-token', 'Please include the authentication token').not().isEmpty()
-] ,validateToken, validateAdmin, validateFarmer, async(req, res, next) => {
+] ,validateAdmin, validateFarmer, async(req, res, next) => {
   console.log(req.body);
   //const {to, amount} = req.body
   const own = await addOwnership(req, res);

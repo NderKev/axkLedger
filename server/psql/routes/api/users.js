@@ -96,6 +96,14 @@ router.post(
   userController.sendVerification,
 );
 
+router.post(
+  '/otp',
+  [
+    check('otp', 'otp is required').isNumeric().not().isEmpty()
+  ],
+  userController.verifyOTP,
+);
+
 router.get(
   '/verify',
   [
