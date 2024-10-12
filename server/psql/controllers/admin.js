@@ -284,9 +284,9 @@ exports.createAdminUser = async (req, res) => {
         return res.status(403).json({ msg : 'unauthorized delete admin' });
       }
 
-      const user = await users.deleteUser(email);
+       await users.deleteUser(email);
       await users.deleteUserToken(wallet_id);
-      return res.status(200).json(user);
+      return res.status(200).json({user : email, msg : "deleted"});
     } catch (err) {
       console.error(err.message);
       return res.status(500).send('Internal server error delete user');
