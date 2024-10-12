@@ -445,7 +445,7 @@ exports.getCurrentTokenUser = async (data) => {
 };
 
 exports.deleteUserToken = async (wallet_id) => {
-  console.log("del to axk auth jwt", id)
+  console.log("del to axk auth jwt", wallet_id)
   const query = db.write('axk_auth_jwt')
   .from('axk_auth_jwt')
   .where('wallet_id', '=', wallet_id)
