@@ -30,6 +30,15 @@ exports.checkWallet = async (data) => {
     return query;
 };
 
+exports.deleteWallet = async (id) => {
+  console.log("del to axk wallet", id)
+  const query = db.write('axk_balance')
+  .from('axk_wallet')
+  .where('wallet_id', '=', id)
+  .del()
+  return query;
+};
+
 exports.createBTC = async (data) => {
   const createdAt = moment().format('YYYY-MM-DD HH:mm:ss');
   const query = db.write('axk_btc').insert({
@@ -43,6 +52,15 @@ exports.createBTC = async (data) => {
     updated_at: createdAt
   });
   console.info("query -->", query.toQuery())
+  return query;
+};
+
+exports.deleteBTC = async (id) => {
+  console.log("del to axk btc", id)
+  const query = db.write('axk_btc')
+  .from('axk_btc')
+  .where('wallet_id', '=', id)
+  .del()
   return query;
 };
 
@@ -87,6 +105,15 @@ exports.isEVM = async (data) => {
     .where('wallet_id', data)
     .orWhere('address', data);   
     return query;
+};
+
+exports.deleteEVM = async (id) => {
+  console.log("del to axk evm", id)
+  const query = db.write('axk_evm')
+  .from('axk_evm')
+  .where('wallet_id', '=', id)
+  .del()
+  return query;
 };
 
 exports.checkEVM = async (data) => {
