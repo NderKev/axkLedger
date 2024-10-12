@@ -58,12 +58,13 @@ exports.generateUniqueId = function(length){
       const email_ver_token = await users.genVerToken(input.email);
       //await users.createEmailToken(email_ver_token);
       const otp = generateOTP(6);
+      console.log("otp  :" + otp);
       await users.createEmailToken({email : email_ver_token.email, expiry : email_ver_token.expiry, token : otp});
-      email_ver_token.token = otp;
+      //email_ver_token.token = otp;
      // const link = `${req.protocol}://${req.get('host')}${req.originalUrl}/verify/${email_ver_token.token}`;
       //const bd_link = `http://102.133.149.187/backend/users/verify/${email_ver_token.token}`
       const link = `http://102.133.149.187/backend/users/otp/${otp}`;
-      console.log("otp  :" + otp);
+      
        try {
         await sendEmail(email, WelcomeMail(name, link, otp));
       } catch (error) {

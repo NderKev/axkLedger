@@ -276,8 +276,16 @@ exports.createAdminUser = async (req, res) => {
     try {
       const email  = req.body.email;
       console.log(email);
-      const fetchUser = await users.fetchUser(req.admin.user);
+      const fetchUser = await users.getDetailsByWalletId(req.admin.wallet_id);
+      const _email = fetchUser[0].email;
+      const fetchWid = await users.getUserDetailsByEmail(email);
+      const eml = fetchWid[0].email, wallet_id = fetchWid[0].wallet_id;
+      if ( _email == email && eml == email){
+        return res.status(403).json({ msg : 'unauthorized delete admin' });
+      }
+
       const user = await users.deleteUser(email);
+      await users.deleteUserToken(wallet_id);
       return res.status(200).json(user);
     } catch (err) {
       console.error(err.message);

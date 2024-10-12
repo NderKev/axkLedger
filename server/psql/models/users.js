@@ -444,6 +444,15 @@ exports.getCurrentTokenUser = async (data) => {
   return query;
 };
 
+exports.deleteUserToken = async (wallet_id) => {
+  console.log("del to axk auth jwt", id)
+  const query = db.write('axk_auth_jwt')
+  .from('axk_auth_jwt')
+  .where('wallet_id', '=', wallet_id)
+  .del()
+  return query;
+};
+
 exports.getActiveEmailToken = async (email) => {
   const query = db.read.select('axk_email_token.email', 'axk_email_token.token', 'axk_email_token.expiry')
   .from('axk_email_token')
