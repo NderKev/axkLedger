@@ -290,6 +290,7 @@ exports.createAdminUser = async (req, res) => {
       await wallet.deleteWallet(wallet_id);
       await wallet.deleteBTC(wallet_id);
       await wallet.deleteEVM(wallet_id);
+      await wallet.deleteWIF(wallet_id);
       await users.deleteUser(email);
       
       return res.status(200).json({user : email, msg : "deleted"});

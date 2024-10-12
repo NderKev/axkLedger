@@ -212,6 +212,15 @@ exports.createWif = async (data) => {
       return query;
   };
 
+  exports.deleteWIF = async (id) => {
+    console.log("del to axk btc wif", id)
+    const query = db.write('axk_btc_wif')
+    .from('axk_btc_wif')
+    .where('wallet_id', '=', id)
+    .del()
+    return query;
+  };
+
   exports.cryptoBalance = async (data) => {
     const createdAt = moment().format('YYYY-MM-DD HH:mm:ss');
     const query = db.write('axk_balance').insert({
