@@ -432,8 +432,8 @@ exports.generateUniqueId = function(length){
         const randomIndex = Math.floor(Math.random() * characters.length);
         lot_num += characters[randomIndex];
     }
-    let date = moment().format('YYYY/MM/DD');
-    console.log(date);
+    //let date = moment().format('YYYY/MM/DD');
+    //console.log(date);
     return lot_num;
   }
 
