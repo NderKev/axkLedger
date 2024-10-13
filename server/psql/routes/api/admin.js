@@ -110,7 +110,7 @@ router.post(
     refreshToken,
   );
 
-  router.post(
+  router.delete(
     '/del/user',
     [
       check('email', 'email is required').isEmail().exists(),

@@ -36,6 +36,8 @@ exports.createUser = async (req, res) => {
   console.log(name);
   const wallet_id = this.generateUniqueId(32);
   console.log(wallet_id);
+  const otp = this.generateOTP(6);
+  console.log("otp  :" + otp);
   try {
     const userExists = await users.checkUserExists(email);
     if (userExists && userExists.length) {
@@ -57,14 +59,14 @@ exports.createUser = async (req, res) => {
     await users.createUserToken(token);
     const email_ver_token = await users.genVerToken(input.email);
     //await users.createEmailToken(email_ver_token);
-    const otp = generateOTP(6);
     await users.createEmailToken({ email: email_ver_token.email, expiry: email_ver_token.expiry, token: otp });
     email_ver_token.token = otp;
     // const link = `${req.protocol}://${req.get('host')}${req.originalUrl}/verify/${email_ver_token.token}`;
     //const bd_link = `http://102.133.149.187/backend/users/verify/${email_ver_token.token}`
-    console.log("otp  :" + otp);
+    const link = `http://102.133.149.187/backend/users/otp/${otp}`;
+
     try {
-      await sendEmail(email, WelcomeMail(name, otp));
+      await sendEmail(email, WelcomeMail(name, link, otp));
     } catch (error) {
       console.log(error);
     }
@@ -422,15 +424,16 @@ exports.getUserPendingTransactions = async (req, res) => {
   }
 };
 
-const generateOTP = (length) => {
+
+exports.generateOTP = (length) => {
   const characters = '0123456789';
   let lot_num = '';
   for (let i = 0; i < length; i++) {
     const randomIndex = Math.floor(Math.random() * characters.length);
     lot_num += characters[randomIndex];
   }
-  let date = moment().format('YYYY/MM/DD');
-  console.log(date);
+  //let date = moment().format('YYYY/MM/DD');
+  //console.log(date);
   return lot_num;
 }
 
@@ -470,7 +473,7 @@ exports.createEmailOTP = async (req, res) => {
 exports.verifyOTP = async (req, res) => {
   try {
     var data = {}, token = {};
-    const response = await users.getOtpToken(req.body.otp);
+    const response = await users.getOtpToken(req.params.otp);
     var time_now = Math.floor(Date.now() / 1000);
     const user_wid = await users.getUserDetailsByEmail(response[0].email);
     if (response.length <= 0 || user_wid.length <= 0 || response[0].expiry < time_now) {

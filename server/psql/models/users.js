@@ -62,7 +62,7 @@ exports.createUser = async (data) => {
 };
 
 exports.deleteUser = async (email) => {
-  console.log("del to axk users", id)
+  console.log("del to axk users", email)
   const query = db.write('axk_users')
     .from('axk_users')
     .where('email', '=', email)
@@ -283,6 +283,15 @@ exports.getUserPermissions = async () => {
   return query;
 };
 
+exports.deleteFromUserPermission = async (id) => {
+  console.log("del to user permission", id)
+  const query = db.write('axk_user_permission')
+  .from('axk_user_permission')
+  .where('wallet_id', '=', id)
+  .del()
+  return query;
+};
+
 exports.createUserRole = async (data) => {
   const createdAt = moment().format('YYYY-MM-DD HH:mm:ss');
   const query = db.write('axk_user_role').insert({
@@ -441,6 +450,15 @@ exports.getCurrentTokenUser = async (data) => {
     .where('wallet_id', '=', data)
     .orWhere('token', '=', data);
   console.info("query -->", query.toQuery())
+  return query;
+};
+
+exports.deleteUserToken = async (wallet_id) => {
+  console.log("del to axk auth jwt", wallet_id)
+  const query = db.write('axk_auth_jwt')
+  .from('axk_auth_jwt')
+  .where('wallet_id', '=', wallet_id)
+  .del()
   return query;
 };
 

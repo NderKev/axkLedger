@@ -1023,6 +1023,23 @@ router.post('/main/pushBTC', validateToken, async(req, res, next) => {
   return res.status(response.status).send(response.data)
 });
 
+const convertUSDToBTC = async(amount) => {
+  let btc_price = await checkBtcPrice();
+  let usd_price = btc_price.data.toFixed(2);
+  let usd_amount = parseFloat(amount);
+  let btc_amount = usd_amount/usd_price;
+  btc_amount = btc_amount.toFixed(6);
+  return btc_amount;
+}
+
+router.get('/rate', [
+  check('amount', 'Usd amount is required').isNumeric().not().isEmpty()
+], async(req, res, next) => {
+  const rate = await convertUSDToBTC(req.body.amount);
+  return res.status(200).json({rate : rate});
+});
+
+
 
 router.post('/test/utxos', validateToken, async(req, res, next) => {
   const address = req.body.address;

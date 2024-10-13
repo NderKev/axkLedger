@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
 const { WelcomeMail } = require('../../mails');
 const users = require('../models/users');
+const wallet = require('../models/wallet');
 const userController = require('./users');
 const CryptoJS = require("crypto-js");
 const pinHash = require('sha256');
@@ -276,9 +277,23 @@ exports.createAdminUser = async (req, res) => {
     try {
       const email  = req.body.email;
       console.log(email);
-      const fetchUser = await users.fetchUser(req.admin.user);
-      const user = await users.deleteUser(email);
-      return res.status(200).json(user);
+      const fetchUser = await users.getDetailsByWalletId(req.admin.wallet_id);
+      const _email = fetchUser[0].email;
+      const fetchWid = await users.getUserDetailsByEmail(email);
+      const eml = fetchWid[0].email, wallet_id = fetchWid[0].wallet_id;
+      if ( _email == email && eml == email){
+        return res.status(403).json({ msg : 'unauthorized delete admin' });
+      }
+      await users.deleteFromUserPermission(wallet_id);
+      await users.deleteUserToken(wallet_id);
+      await wallet.deleteCryptoBalance(wallet_id);
+      await wallet.deleteWallet(wallet_id);
+      await wallet.deleteBTC(wallet_id);
+      await wallet.deleteEVM(wallet_id);
+      await wallet.deleteWIF(wallet_id);
+      await users.deleteUser(email);
+      
+      return res.status(200).json({user : email, msg : "deleted"});
     } catch (err) {
       console.error(err.message);
       return res.status(500).send('Internal server error delete user');
