@@ -15,6 +15,7 @@
    const bcrypt = require('bcryptjs');
    const pinHash = require('sha256');
    const transactions = require('../../server/psql/models/transactions');
+   const transactionController = require('../../server/psql/controllers/transactions');
    const { check, validationResult } = require('express-validator');
    const { validateToken, validateAdmin } = require('../../server/psql/middleware/auth');
    const {authenticateUser, authenticateAdmin, authenticatePin, authenticatePinAdmin} = require('../../server/psql/controllers/auth');
@@ -39,13 +40,13 @@
    
    const decodeRawTransaction = async(rawTx, token)=>{
      try {
-       const tx = JSON.stringify(rawTx);
+       //const tx = JSON.stringify(rawTx);
        let decode_url = `${decode}?token=${token}`
        const config = {
         method : 'post',
         url : decode_url,
         headers: { },
-        data : tx
+        data : rawTx
       }
        let response = await axios(config);
        return  successResponse(200, response.data);
@@ -92,8 +93,7 @@
   }
 
   const pushRawTransactionCr = async(rawTx, token)=>{
-    try {
-      
+    try { 
       let push_url = `${push}?token=${token}`
       const config = {
         method : 'post',
@@ -335,12 +335,14 @@
      }
       try {
         const usr = req.user, adm = req.admin;
-        let walletid;
+        let walletid, name;
         if (usr){
           walletid = usr.wallet_id;
+          name = usr.user;
         }
         else {
-          walletid = adm.wallet_id
+          walletid = adm.wallet_id;
+          name = adm.user;
         }
         
        //sendFrom, keystr, sendTo, amount,  indexer, keyP, passphrase
@@ -454,6 +456,7 @@
         sentObj.address = destination.address;
         sentObj.rawTx = rawTx;
         sentObj.txHash = tx_hash;
+        sentObj.user = name;
         txObj.wallet_id = walletid;
         txObj.address = auth_btc.btc.address;
         txObj.tx_hash = tx_hash;
@@ -501,6 +504,7 @@
         await transactions.createTransaction(txObj);
         //const decTx = await decodeRawTransaction(JSON.stringify(sentObj.rawTx), token);
         //console.log(decTx);
+        
         return successResponse(201, sentObj, {txHash : tx_hash}, 'btc sent');
         //implement sendRawTX
         
@@ -944,6 +948,7 @@ const psbtTransactionBuildMain = async(sendFrom, keystore, key, sendTo, amount, 
   return res.status(response.status).send(response.data);
 });
 
+
 router.post('/test/decode/admin', validateAdmin, async(req, res, next) => {
   let walletid = await walletModel.fetchSentPending({wallet_id : req.admin.wallet_id, rawTx : req.body.tx});
   if (!walletid && !walletid.length) {
@@ -991,6 +996,21 @@ router.post('/test/push/cr', validateToken, async(req, res, next) => {
   }
   await walletModel.createWif(rec_wif);
   await walletModel.updateBTC(rec_wif);
+  let tx_fiat = await transactions.getTransactionByHash(sent_wif[0].txHash);
+  const link = `https://live.blockcypher.com/btc-testnet/tx/${sent_wif[0].txHash}/`
+  const txData = {
+    wallet_id : req.user.wallet_id,
+    name : req.user.user,
+    fiat : tx_fiat[0].fiat,
+    link : link,
+    crypto : 'btc-testnet',
+    address : tx_fiat[0].to
+  }
+  try {
+    await transactionController.sendTransactionMail(txData)
+  } catch (error) {
+    console.log(error);
+  } 
   return res.status(response.status).send(response.data)
 });
 
@@ -1014,6 +1034,21 @@ router.post('/test/push/admin', validateAdmin, async(req, res, next) => {
   }
   await walletModel.createWif(rec_wif);
   await walletModel.updateBTC(rec_wif);
+  let tx_fiat = await transactions.getTransactionByHash(sent_wif[0].txHash);
+  const link = `https://live.blockcypher.com/btc-testnet/tx/${sent_wif[0].txHash}/`
+  const txData = {
+    wallet_id : req.admin.wallet_id,
+    name : req.admin.user,
+    fiat : tx_fiat[0].fiat,
+    link : link,
+    crypto : 'btc-testnet',
+    address : tx_fiat[0].to
+  }
+  try {
+    await transactionController.sendTransactionMail(txData)
+  } catch (error) {
+    console.log(error);
+  } 
   return res.status(response.status).send(response.data)
 });
 

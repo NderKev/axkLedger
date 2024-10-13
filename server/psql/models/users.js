@@ -30,6 +30,13 @@ exports.checkUserExists = async (data) => {
   return query;
 };
 
+exports.getUserEmailByWalletId = async (data) => {
+  const query = db.read.select('axk_users.email')
+  .from('axk_users')
+  .where('wallet_id', '=', data);
+  //.orWhere('wallet_id', '=', data);
+  return query;
+};
 
 
 

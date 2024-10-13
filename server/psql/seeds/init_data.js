@@ -32,13 +32,13 @@ exports.seed = async function(knex) {
   const adm_token = function(payload){
   try {
   var adm_tkn = {};
-  jwt.sign(
-    data: {
+  jwt.sign({
+    data : {
       wallet_id: payload.user,
       user: payload.pass,
       role: payload.role
-    },
-    config.ADM_SECRET,
+    }
+  }, config.ADM_SECRET,
     { expiresIn: '1h' },
     (err, token) => {
       if (err) throw err;

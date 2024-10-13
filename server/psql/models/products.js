@@ -7,14 +7,15 @@ exports.createProduct = async (data) => {
   const query = db.write('axk_products').insert({
     farmer_id: data.farmer_id,
     lot_number: data.lot_number,
-    description: data.description || null,
-    seller_id: data.seller_id || null,
-    warehouse_id: data.warehouse_id || null,
-    quantity: data.quantity || null,
-    price: data.price || null,
-    one_time_limit: data.one_time_limit || null,
-    currency: data.currency || null,
-    picture: data.picture || null,
+    name: data.name,
+    image: data.image || null,
+    price: data.price,
+    currency: data.currency,
+    quantity: data.quantity,
+    quality: data.quality,
+    available: data.available || 1,
+    latitude: data.latitude || null,
+    longitude: data.longitude || null,
     created_at: createdAt,
     updated_at: createdAt
   });
@@ -25,15 +26,15 @@ exports.createProduct = async (data) => {
 exports.updateProduct = async (data) => {
   data.updated_at = moment().format('YYYY-MM-DD HH:mm:ss');
   const toBeUpdated = {};
-  const canBeUpdated = ['name','description', 'seller_id', 'warehouse_id',
-  'updated_at', 'quantity', 'price', 'currency', 'one_time_limit', 'picture'];
+  const canBeUpdated = ['name','image', 'currency', 'quantity',
+'quality', 'available', 'latitude', 'longitude'];
   for (let i in data) {
     if (canBeUpdated.indexOf(i) > -1) {
       toBeUpdated[i] = data[i];
     }
   }
   const query = db.write('axk_products')
-    .where('id', data.id)
+    .where('lot_number', data.lot_number)
     .update(toBeUpdated);
 
   console.info("query -->", query.toQuery())
@@ -62,18 +63,18 @@ exports.reAddProduct = async (id) => {
   return query;
 };
 
-exports.getDetailsById = async (id) => {
+exports.getDetailsByLoteNumber = async (lote) => {
   const query = db.read.select('*')
   .from('axk_products')
-  .where('id', '=', id);
+  .where('lote_number', '=', lote);
   return query;
 };
 
 
-exports.getNameById = async (id) => {
-  const query = db.read.select('axk_products.name','axk_products.picture')
+exports.getNameByLoteNumber = async (lote) => {
+  const query = db.read.select('axk_products.name','axk_products.image')
   .from('axk_products')
-  .where('id', '=', id);
+  .where('lote_number', '=', lote);
   return query;
 };
 
@@ -85,40 +86,34 @@ exports.getAllProducts = async () => {
   return query;
 };
 
-exports.getAllProductsBySellerID = async (seller_id) => {
+exports.getAllProductsByFarmerId = async (farmer_id) => {
   const query = db.read.select('*')
   .from('axk_products')
-  .where('seller_id', '=', seller_id);
+  .where('farmer_id', '=', farmer_id);
   //console.info("query -->", query.toQuery())
   return query;
 };
 
-exports.getAllProductsByWarehouseID = async (warehouse_id) => {
-  const query = db.read.select('*')
-  .from('axk_products')
-  .where('warehouse_id', '=', warehouse_id);
-  //console.info("query -->", query.toQuery())
-  return query;
-};
 
 exports.getCategoryNameById = async (id) => {
-  const query = db.read.select('product_category.category')
-  .from('product_category')
-  .join('product_categorized','product_categorized.category_id','=','product_category.id')
-  .where('product_categorized.product_id', '=', id);
+  const query = db.read.select('paxk_product_category.category')
+  .from('axk_product_category')
+  .join('axk_product_categorized','axk_product_categorized.category_id','=','axk_product_category.id')
+  .where('axk_product_categorized.product_id', '=', id);
   return query;
 };
 
 exports.getProdCategories = async () => {
   const query = db.read.select('*')
-  .from('product_category');
+  .from('axk_product_category');
   return query;
 };
 
 exports.createProductCategory = async (data) => {
   const createdAt = moment().format('YYYY-MM-DD HH:mm:ss');
-  const query = db.write('product_category').insert({
+  const query = db.write('axk_product_category').insert({
     category: data.category,
+    name: data.name,
     created_at: createdAt,
     updated_at: createdAt
   });
@@ -127,18 +122,18 @@ exports.createProductCategory = async (data) => {
 };
 
 exports.getCategoryById = async (id) => {
-  const query = db.read.select('product_categorized.category_id')
-  .from('product_categorized')
+  const query = db.read.select('axk_product_categorized.category_id')
+  .from('axk_product_categorized')
   //.join('product_category','product_category.id','=','product_categorized.category_id')
-  .where('product_categorized.product_id', '=', id);
+  .where('axk_product_categorized.product_id', '=', id);
   return query;
 };
 
 exports.productCategorize = async (data) => {
   const createdAt = moment().format('YYYY-MM-DD HH:mm:ss');
-  const query = db.write('product_categorized').insert({
+  const query = db.write('axk_product_categorized').insert({
     product_id: data.product_id,
-    category_id: data.category_id || 1,
+    category: data.category,
     created_at: createdAt,
     updated_at: createdAt
   });
@@ -148,8 +143,8 @@ exports.productCategorize = async (data) => {
 
 
 exports.getProductCategory = async (id) => {
-  const query = db.read.select('category_id')
-  .from('product_categorized')
+  const query = db.read.select('category')
+  .from('axk_product_categorized')
   .where('product_id', '=', id);
   return query;
 };
