@@ -21,7 +21,7 @@ const Header = () => `
                       <tr>
                         <td style="width:250px;"><a href="https://www.axkl.org" target="_blank"><img
                               alt="axkledger" height="auto"
-                              src="../../psql/public/images/logo.jpg"
+                              src="http://102.133.149.187/images/logo.jpg"
                               style="border:none;border-radius:0;display:block;outline:none;text-decoration:none;height:auto;width:100%;font-size:13px;"
                               width="250"></a></td>
                       </tr>
