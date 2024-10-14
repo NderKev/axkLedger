@@ -885,7 +885,7 @@ const psbtTransactionBuildMain = async(sendFrom, keystore, key, sendTo, amount, 
  });
  
  router.post('/test/sendBTC/cr', validateToken, [
-  check('amount', 'Please include a amount').isInt().not().isEmpty(),
+  check('amount', 'Please include an amount').isNumeric().not().isEmpty(),
   check('passphrase', 'Please include a passphrase').isNumeric().not().isEmpty(),
 ], async(req, res, next) => {
   req.body.to = config.ESCROW_BTC;//"mnxW3nw6AVfAXE55vsoMkyGEGmB9KnWm4N";
@@ -896,7 +896,7 @@ const psbtTransactionBuildMain = async(sendFrom, keystore, key, sendTo, amount, 
  });
 
  router.post('/test/sendBTC/addr', validateToken, [
-  check('amount', 'Please include a amount').isInt().not().isEmpty(),
+  check('amount', 'Please include an amount').isNumeric().not().isEmpty(),
   check('passphrase', 'Please include a passphrase').isNumeric().not().isEmpty(),
   check('to', 'Please include a destination address').isBtcAddress().not().isEmpty(),
 ], async(req, res, next) => {
@@ -906,7 +906,7 @@ const psbtTransactionBuildMain = async(sendFrom, keystore, key, sendTo, amount, 
  });
 
  router.post('/test/sendBTC/admin', validateAdmin, [
-  check('amount', 'Please include a amount').isInt().not().isEmpty(),
+  check('amount', 'Please include an amount').isNumeric().not().isEmpty(),
   check('pin', 'Please include a pin').isNumeric().not().isEmpty(),
   check('to', 'Please include a destination address').isBtcAddress().not().isEmpty(),
 ], async(req, res, next) => {
