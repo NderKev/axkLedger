@@ -20,6 +20,7 @@
    const { validateToken, validateAdmin } = require('../../server/psql/middleware/auth');
    const {authenticateUser, authenticateAdmin, authenticatePin, authenticatePinAdmin} = require('../../server/psql/controllers/auth');
    const walletModel = require('../../server/psql/models/wallet');
+   const userModel = require('../../server/psql/models/wallet');
   
    const logStruct = (func, error) => {
     return {'func': func, 'file': 'relayBTC', error}
