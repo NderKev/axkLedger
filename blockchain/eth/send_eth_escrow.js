@@ -13,6 +13,7 @@ const SignerProvider = require('ethjs-provider-signer');
 const provider = require('./libs/provider');
 const { hdkey, Wallet } = require('@ethereumjs/wallet');
 const transactionModel = require('../../server/psql/models/transactions');
+const transactionController = require('../../server/psql/controllers/transactions');
 const walletModel = require('../../server/psql/models/wallet');
 const userModel = require('../../server/psql/models/users');
 const { check, validationResult } = require('express-validator');
@@ -77,12 +78,14 @@ const send_ether_to_escrow = async(req, res) => {
     }
     try {
       const usr = req.user, adm = req.admin;
-      let walletid;
+      let walletid, name;
       if (usr){
           walletid = usr.wallet_id;
+          name = usr.user;
       }
       else {
-          walletid = adm.wallet_id
+          walletid = adm.wallet_id;
+          name = adm.user;
       }
       let auth_data = {}, pin_set = true;
       const check_pin = await userModel.fetchUserPin(walletid);
@@ -169,8 +172,23 @@ const send_ether_to_escrow = async(req, res) => {
       let sum = usd.toFixed(2);
       txObj.fiat = sum;
       //tx Hash :0xd46167c3b87bb5a2fad4bf9beeab65fe88215cab4876a705e2bbbce39fded944
-       
+      //let tx_fiat = await transactions.getTransactionByHash(sent_wif[0].txHash);
       await transactionModel.createTransaction(txObj);
+      const link = `https://sepolia.etherscan.io/tx/${txObj.tx_hash}`
+      const txData = {
+        wallet_id : walletid,
+        name : name,
+        fiat : txObj.fiat,
+        link : link,
+        crypto : 'eth-sepolia',
+        address : txObj.to
+      }
+      try {
+        await transactionController.sendTransactionMail(txData)
+      } catch (error) {
+        console.log(error);
+      } 
+      
       web3.setProvider(httpProvider);
       return successResponse(201, txObj, {txHash : txObj.tx_hash, wallet_id : walletid}, 'eth sent');
         

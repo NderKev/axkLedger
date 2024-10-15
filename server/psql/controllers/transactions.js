@@ -1,6 +1,11 @@
 const { validationResult } = require('express-validator');
 //const {isAddress} = require("web3-validator");
 const transactions = require('../models/transactions');
+const { TransactionMail } = require('../../mails');
+const sendEmail = require('../../helpers/sendMail');
+const nodemailer = require('nodemailer');
+const config = require('../config');
+const users = require('../models/users');
 
 exports.createTransaction = async (req, res) => {
     const errors = validationResult(req);
@@ -11,18 +16,22 @@ exports.createTransaction = async (req, res) => {
     //const { wallet_id, address, tx_hash, mode, value, fiat} = req.body;
     try {
       const usr = req.user, adm = req.admin;
-      let walletid;
+      let walletid, name;
       if (usr){
         walletid = usr.wallet_id;
+        name = usr.user;
       }
       else {
         walletid = adm.wallet_id
+        name = adm.user;
       }
-      if (req.body.wallet_id !== walletid) {
+      /** if (req.body.wallet_id !== walletid) {
         return res.status(403).json({ msg : 'user wallet id mismatch' });
-      }
-      //req.body.wallet_id == walletid;  
+      } **/
+
+      req.body.wallet_id == walletid;  
       const response = await transactions.createTransaction(req.body);
+    
       return res.status(200).json(response);
     } catch (error) {
       console.error('createTransaction', error.message);
@@ -30,6 +39,33 @@ exports.createTransaction = async (req, res) => {
     }
   };
 
+exports.sendTransactionMail = async (data) => {
+    //const { ema, address, tx_hash, mode, value, fiat} = req.body;
+    let resSend = {};
+    try { 
+      const get_user = await users.getUserEmailByWalletId(data.wallet_id);
+      const email = get_user[0].email,
+      name = data.name,
+      amount = data.fiat,
+      link = data.link,
+      crypto = data.crypto,
+      address = data.address;
+      try {
+        await sendEmail(email, TransactionMail(name, link, amount, crypto, address));
+      } catch (error) {
+        console.log(error);
+      }
+      resSend.data = data;
+      resSend.status = "success";
+      return resSend; 
+    } catch (error) {
+      console.error('sendTransactionMail', error.message);
+      resSend.data = data;
+      resSend.status = "error";
+      return resSend;
+    }
+  };
+  
 
   exports.updateTransaction = async (req, res) => {
     const errors = validationResult(req);

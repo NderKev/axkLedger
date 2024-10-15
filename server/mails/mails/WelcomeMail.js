@@ -7,10 +7,13 @@ const WelcomeMailContent = (link , otp) => `
 ${ContentBlock(
   `${Text(
     'Welcome to afrikabal and thank you for registering to our service!',
-    'Verify your email using the otp below : ',
-     otp
   )}`,
 )}
+${ContentBlock(`
+  ${Text(
+  'Verify your email using the otp below : \n' + otp + '\n or use the magic link below',  
+  )}
+  `)}
 ${Button('Verify now!', link)}
 ${ContentBlock(`${Text('Enjoy selling and tracking agricultural products on our platform!')}`)}
 `;

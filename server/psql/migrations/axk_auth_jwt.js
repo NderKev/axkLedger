@@ -4,7 +4,7 @@ exports.up = function (knex) {
         table.increments().primary();
         table.string('wallet_id').index().references('wallet_id').inTable('axk_users').onDelete('restrict').onUpdate('cascade');
         table.integer('expiration').unsigned();
-        table.string('token');
+        table.string('token', 2000);
         table.timestamps();
       })
     ])
