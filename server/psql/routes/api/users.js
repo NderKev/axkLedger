@@ -74,7 +74,7 @@ router.post(
 router.post(
   '/forgot_password/:token',
   [
-   // check('name', 'Name is required').not().isEmpty(),
+    // check('name', 'Name is required').not().isEmpty(),
     check('email', 'Please include a valid email').isEmail(),
     check(
       'password',
@@ -130,8 +130,5 @@ router.get(
   validateToken,
   userController.getUserTransactionDetails,
 );
-
-
-
 
 module.exports = router;

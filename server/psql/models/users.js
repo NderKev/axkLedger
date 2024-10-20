@@ -23,7 +23,7 @@ exports.getUserDetailsByEmail = async (email) => {
 
 
 exports.checkUserExists = async (data) => {
-  const query = db.read.select('axk_users.id')
+  const query = db.read.select('axk_users.*')
     .from('axk_users')
     .where('email', '=', data)
     .orWhere('wallet_id', '=', data);
@@ -32,8 +32,8 @@ exports.checkUserExists = async (data) => {
 
 exports.getUserEmailByWalletId = async (data) => {
   const query = db.read.select('axk_users.email')
-  .from('axk_users')
-  .where('wallet_id', '=', data);
+    .from('axk_users')
+    .where('wallet_id', '=', data);
   //.orWhere('wallet_id', '=', data);
   return query;
 };
@@ -293,9 +293,9 @@ exports.getUserPermissions = async () => {
 exports.deleteFromUserPermission = async (id) => {
   console.log("del to user permission", id)
   const query = db.write('axk_user_permission')
-  .from('axk_user_permission')
-  .where('wallet_id', '=', id)
-  .del()
+    .from('axk_user_permission')
+    .where('wallet_id', '=', id)
+    .del()
   return query;
 };
 
@@ -463,9 +463,9 @@ exports.getCurrentTokenUser = async (data) => {
 exports.deleteUserToken = async (wallet_id) => {
   console.log("del to axk auth jwt", wallet_id)
   const query = db.write('axk_auth_jwt')
-  .from('axk_auth_jwt')
-  .where('wallet_id', '=', wallet_id)
-  .del()
+    .from('axk_auth_jwt')
+    .where('wallet_id', '=', wallet_id)
+    .del()
   return query;
 };
 
