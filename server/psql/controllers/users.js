@@ -8,6 +8,7 @@ const sendEmail = require('../../helpers/sendMail');
 const nodemailer = require('nodemailer');
 const config = require('../config');
 const path = require('path');
+const he = require('he');
 
 const createResponse = (status, message, data) => {
   const response = {
@@ -169,16 +170,16 @@ exports.sendVerification = async (req, res) => {
       },
     });
     const AUTH_URL = `http://102.133.149.187/backend/users/verify`;//http://102.133.149.187/backend/users/verify//localhost:9000/axkledger/v1/api/users/verify
-    const auth_link = `${req.protocol}://${req.get('host')}${req.originalUrl}/verify/:${token}`;
-    const link = `${AUTH_URL}/:${token}`;
+    const auth_link = `${req.protocol}://${req.get('host')}${req.originalUrl}/verify/:${he.encode(token)}`;
+    const link = `${AUTH_URL}/:${he.encode(token)}`;
     console.log(auth_link + " : " + link);
     // send mail with defined transport object
     let info = await transporter.sendMail({
       from: `${config.FROM_NAME}👻 <${config.FROM_EMAIL}>`,//'"Verification 👻" <no-reply@doeremi.com>', // sender address
       to: email, //"nostrakelvin@gmail.com" // list of receivers
       subject: "Please Verify Your Afrikabal Account ✔", // Subject line
-      text: "Hello " + user, // plain text body
-      html: "Hello " + user + ",<br> You've successfully created an afrikabal account from this email.<br><a href=" + link + ">Click here to verify your email</a>", // html body
+      text: "Hello " + he.encode(user), // plain text body
+      html: "Hello " + he.encode(user) + ",<br> You've successfully created an afrikabal account from this email.<br><a href=" + link + ">Click here to verify your email</a>", // html body
     });
     console.log("Message sent: %s", info.messageId);
     // Message sent: <b658f8ca-6296-ccf4-8306-87d57a0b4321@example.com>
