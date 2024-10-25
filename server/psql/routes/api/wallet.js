@@ -231,7 +231,7 @@ router.get(
 
 router.get(
   '/admin/balance',
-  validateToken,
+  validateAdmin,
   walletController.getBalance
 );
 

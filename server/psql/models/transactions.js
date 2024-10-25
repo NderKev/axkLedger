@@ -9,6 +9,14 @@ exports.getTransactionById = async (id) => {
   return query;
 };
 
+/** exports.getMonthlyTransactionsByUser = async (wallet_id) => {
+  const last_month = 
+  const query = db.read.select('*')
+  .from('axk_txs')
+  .where('id', '=', id);
+  return query;
+}; **/
+
 
 exports.getTransactionByWalletId = async (wallet_id) => {
   const query = db.read.select('*')

@@ -53,7 +53,6 @@ const logStruct = (func, error) => {
 })
 
 return ethUSD;
-}  **/
 
 const checkEthUsdPrice = async () => {
   const ethPrice = require('eth-price');
@@ -449,5 +448,7 @@ router.get('/usdt', validateToken, [
 
   return balance;
 });
+
+
 
 module.exports = router;

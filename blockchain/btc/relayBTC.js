@@ -893,7 +893,7 @@ const psbtTransactionBuildMain = async(sendFrom, keystore, key, sendTo, amount, 
   //req.body.passphrase = req.body.pin;
   const response = await psbtTransactionBuilderCr(req, res);
   
-  return res.status(response.status).send(response.data)
+  return res.status(response.status).send(response.data);
  });
 
  router.post('/test/sendBTC/addr', validateToken, [
